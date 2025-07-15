@@ -1,0 +1,61 @@
+#######################################
+# Syntax Coloring Map For WebGUI
+#######################################
+
+#######################################
+# Library (KEYWORD1)
+#######################################
+
+WebGUI	KEYWORD1
+GUIElement	KEYWORD1
+Button	KEYWORD1
+Slider	KEYWORD1
+WebGUITheme	KEYWORD1
+WebGUIStyleManager	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+update	KEYWORD2
+addElement	KEYWORD2
+startAP	KEYWORD2
+connectWiFi	KEYWORD2
+setTitle	KEYWORD2
+setHeading	KEYWORD2
+setCustomCSS	KEYWORD2
+setTheme	KEYWORD2
+useDefaultStyles	KEYWORD2
+getIP	KEYWORD2
+generateHTML	KEYWORD2
+generateCSS	KEYWORD2
+generateJS	KEYWORD2
+wasPressed	KEYWORD2
+isPressed	KEYWORD2
+setValue	KEYWORD2
+setRange	KEYWORD2
+getIntValue	KEYWORD2
+getFloatValue	KEYWORD2
+getMinValue	KEYWORD2
+getMaxValue	KEYWORD2
+getValue	KEYWORD2
+setPosition	KEYWORD2
+setSize	KEYWORD2
+setButtonStyle	KEYWORD2
+getRequiredHeight	KEYWORD2
+getDefaultCSS	KEYWORD2
+getThemedCSS	KEYWORD2
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+GUI	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+WEBGUI_DEFAULT_THEME	LITERAL1
+WEBGUI_DARK_THEME	LITERAL1
