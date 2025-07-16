@@ -181,9 +181,7 @@ void setup() {
 **setTheme(theme)** - Apply color theme
 ```cpp
 void setup() {
-  GUI.setTheme(WEBGUI_DARK_THEME);     // Dark theme
-  // or
-  GUI.setTheme(WEBGUI_DEFAULT_THEME);  // Light theme
+  GUI.setTheme(WEBGUI_DEFAULT_THEME);  // Default theme
 }
 ```
 
@@ -501,8 +499,7 @@ void loop() {
 
 ### Built-in Themes
 ```cpp
-GUI.setTheme(WEBGUI_DEFAULT_THEME);   // Light theme
-GUI.setTheme(WEBGUI_DARK_THEME);      // Dark theme
+GUI.setTheme(WEBGUI_DEFAULT_THEME);   // Default theme
 ```
 
 ### Custom CSS
@@ -743,7 +740,7 @@ void setup() {
   // Interface configuration
   GUI.setTitle("Smart Home Control");
   GUI.setHeading("Home Automation Dashboard");
-  GUI.setTheme(WEBGUI_DARK_THEME);
+  GUI.setTheme(WEBGUI_DEFAULT_THEME);
   
   // Add all elements
   GUI.addElement(&powerBtn);

@@ -9,7 +9,10 @@
 WebGUI	KEYWORD1
 GUIElement	KEYWORD1
 Button	KEYWORD1
+Toggle	KEYWORD1
 Slider	KEYWORD1
+SensorStatus	KEYWORD1
+SystemStatus	KEYWORD1
 WebGUITheme	KEYWORD1
 WebGUIStyleManager	KEYWORD1
 
@@ -33,16 +36,25 @@ generateCSS	KEYWORD2
 generateJS	KEYWORD2
 wasPressed	KEYWORD2
 isPressed	KEYWORD2
+setState	KEYWORD2
+setButtonStyle	KEYWORD2
+wasToggled	KEYWORD2
+isOn	KEYWORD2
 setValue	KEYWORD2
 setRange	KEYWORD2
+setDebounceTime	KEYWORD2
+getDebounceTime	KEYWORD2
 getIntValue	KEYWORD2
 getFloatValue	KEYWORD2
 getMinValue	KEYWORD2
 getMaxValue	KEYWORD2
 getValue	KEYWORD2
+getDisplayValue	KEYWORD2
+updateMemory	KEYWORD2
+updateUptime	KEYWORD2
+updateSystemInfo	KEYWORD2
 setPosition	KEYWORD2
 setSize	KEYWORD2
-setButtonStyle	KEYWORD2
 getRequiredHeight	KEYWORD2
 getDefaultCSS	KEYWORD2
 getThemedCSS	KEYWORD2
@@ -58,4 +70,3 @@ GUI	KEYWORD2
 #######################################
 
 WEBGUI_DEFAULT_THEME	LITERAL1
-WEBGUI_DARK_THEME	LITERAL1
