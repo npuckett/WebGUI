@@ -43,7 +43,14 @@ const char BUTTON_TEMPLATE[] PROGMEM = R"rawliteral(
 const char SLIDER_TEMPLATE[] PROGMEM = R"rawliteral(
         <div class="webgui-slider-container">
             <label for="%ID%">%LABEL% <span class="webgui-slider-value" id="%ID%_value">%VALUE%</span></label>
-            <input type="range" id="%ID%" class="webgui-slider" min="%MIN%" max="%MAX%" value="%VALUE%" oninput="sliderChange('%ID%', this.value)">
+            <input type="range" id="%ID%" class="webgui-slider" min="%MIN%" max="%MAX%" value="%VALUE%">
+        </div>
+)rawliteral";
+
+const char SENSOR_STATUS_TEMPLATE[] PROGMEM = R"rawliteral(
+        <div class="webgui-sensor-container">
+            <label class="webgui-sensor-label">%LABEL%</label>
+            <span class="webgui-sensor-value" id="%ID%_display">%VALUE%</span>
         </div>
 )rawliteral";
 
@@ -337,9 +344,26 @@ String WebGUI::generateJS() {
             fetch('/set?' + id + '=1');
         }
         
+        // Original immediate slider function (for backward compatibility)
         function sliderChange(id, value) {
             document.getElementById(id + '_value').textContent = value;
             fetch('/set?' + id + '=' + value);
+        }
+        
+        // New debounced slider function
+        function debouncedSliderChange(id, value, debounceMs) {
+            // Update display immediately for responsiveness
+            document.getElementById(id + '_value').textContent = value;
+            
+            // Clear existing timeout for this slider
+            if (window['timeout_' + id]) {
+                clearTimeout(window['timeout_' + id]);
+            }
+            
+            // Set new timeout for network request
+            window['timeout_' + id] = setTimeout(() => {
+                fetch('/set?' + id + '=' + value);
+            }, debounceMs);
         }
     )rawliteral";
     
@@ -455,7 +479,9 @@ String Slider::generateCSS() {
 }
 
 String Slider::generateJS() {
-    return "";
+    // Generate JavaScript that configures this specific slider to use debouncing
+    return "document.getElementById('" + id + "').oninput = function() { debouncedSliderChange('" + 
+           id + "', this.value, " + String(debounceMs) + "); };\n";
 }
 
 void Slider::handleUpdate(String value) {
@@ -488,9 +514,58 @@ void Slider::setRange(int min, int max) {
     currentValue = constrain(currentValue, minValue, maxValue);
 }
 
+// SensorStatus Implementation
+SensorStatus::SensorStatus(String label, int x, int y, int width) 
+    : GUIElement(label, x, y, width, 40), displayValue("--") {
+}
+
+String SensorStatus::generateHTML() {
+    String html = String(SENSOR_STATUS_TEMPLATE);
+    html.replace("%ID%", id);
+    html.replace("%LABEL%", label);
+    html.replace("%VALUE%", displayValue);
+    return html;
+}
+
+String SensorStatus::generateCSS() {
+    return String("#") + id + "_container { position: absolute; left: " + String(x) + 
+           "px; top: " + String(y) + "px; width: " + String(width) + "px; }\n";
+}
+
+String SensorStatus::generateJS() {
+    return "";
+}
+
+void SensorStatus::handleUpdate(String value) {
+    // Read-only element - updates come from setValue() calls in code
+}
+
+String SensorStatus::getValue() {
+    return displayValue;
+}
+
+void SensorStatus::setValue(int value) {
+    displayValue = String(value);
+}
+
+void SensorStatus::setValue(float value, int decimals) {
+    displayValue = String(value, decimals);
+}
+
+void SensorStatus::setValue(bool value) {
+    displayValue = value ? "TRUE" : "FALSE";
+}
+
+void SensorStatus::setValue(String value) {
+    displayValue = value;
+}
+
+void SensorStatus::setValue(const char* value) {
+    displayValue = String(value);
+}
+
 // WebGUIStyleManager Implementation
 String WebGUIStyleManager::getDefaultCSS() {
-    // For now, return a basic CSS to avoid PROGMEM issues
     return String(
         "body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }\n"
         ".container { background: white; padding: 30px; border-radius: 10px; max-width: 800px; margin: 0 auto; }\n"
@@ -501,6 +576,9 @@ String WebGUIStyleManager::getDefaultCSS() {
         ".webgui-slider-container label { display: block; margin-bottom: 8px; font-weight: bold; }\n"
         ".webgui-slider-value { float: right; background: #007bff; color: white; padding: 4px 10px; border-radius: 15px; font-size: 13px; }\n"
         ".webgui-slider { width: 100%; height: 8px; border-radius: 4px; background: #ddd; outline: none; }\n"
+        ".webgui-sensor-container { background: #f8f9fa; border-radius: 8px; padding: 12px; margin: 8px 0; border-left: 4px solid #6c757d; display: flex; align-items: center; }\n"
+        ".webgui-sensor-label { font-weight: bold; color: #495057; margin-right: auto; }\n"
+        ".webgui-sensor-value { font-family: monospace; font-size: 16px; font-weight: bold; color: #495057; }\n"
     );
 }
 

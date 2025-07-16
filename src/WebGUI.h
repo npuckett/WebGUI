@@ -40,6 +40,7 @@
 class GUIElement;
 class Button;
 class Slider;
+class SensorStatus;
 
 class WebGUI {
   public:
@@ -166,12 +167,44 @@ class Slider : public GUIElement {
     void setValue(int value);
     void setRange(int min, int max);
     
+    // Debouncing control
+    void setDebounceTime(int ms) { debounceMs = ms; }
+    int getDebounceTime() { return debounceMs; }
+    
     // Calculate proper height for positioning
     static int getRequiredHeight() { return 60; }
     
   private:
     int minValue, maxValue, currentValue;
     bool valueChanged;
+    int debounceMs = 100;  // Default 100ms debounce
+};
+
+class SensorStatus : public GUIElement {
+  public:
+    SensorStatus(String label, int x, int y, int width = 200);
+    
+    String generateHTML() override;
+    String generateCSS() override;
+    String generateJS() override;
+    void handleUpdate(String value) override; // Not used - read-only
+    String getValue() override;
+    
+    // Set values for different data types
+    void setValue(int value);
+    void setValue(float value, int decimals = 2);
+    void setValue(bool value);
+    void setValue(String value);
+    void setValue(const char* value);
+    
+    // Get current display value
+    String getDisplayValue() { return displayValue; }
+    
+    // Calculate proper height for positioning
+    static int getRequiredHeight() { return 40; }
+    
+  private:
+    String displayValue;
 };
 
 // Global instance - can be used directly or create your own

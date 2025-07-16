@@ -53,17 +53,29 @@ void setup() {
   Serial.println("=== WebGUI WiFi Station Mode ===");
   Serial.println("Connecting to: " + String(WIFI_SSID));
   
-  if (GUI.startStation(WIFI_SSID, WIFI_PASSWORD)) {
-    networkConnected = true;
-    connectStartTime = millis();
-    Serial.println("✅ Connected successfully!");
-    Serial.println("📍 IP Address: " + GUI.getIP());
-    Serial.println("🌐 Access GUI at: http://" + GUI.getIP());
-  } else {
-    Serial.println("❌ Connection failed!");
-    Serial.println("🔄 Will retry connection...");
-    networkConnected = false;
+  // Connect to existing WiFi network (Station Mode)
+  Serial.println("Connecting to WiFi...");
+  GUI.connectWiFi(WIFI_SSID, WIFI_PASSWORD);
+  
+  // Wait a bit more for IP assignment
+  delay(2000);
+  
+  // Verify we have a valid IP
+  String ip = GUI.getIP();
+  while (ip == "0.0.0.0" || ip.length() == 0) {
+    Serial.println("Waiting for IP address...");
+    delay(1000);
+    ip = GUI.getIP();
   }
+  
+  networkConnected = true;
+  connectStartTime = millis();
+  Serial.println("✅ Connected successfully!");
+  Serial.println("=================================");
+  Serial.println("IP Address: " + GUI.getIP());
+  Serial.println("Open your browser and navigate to:");
+  Serial.println("http://" + GUI.getIP());
+  Serial.println("=================================");
   
   // Configure interface
   GUI.setTitle("WiFi Station Controller");
@@ -151,7 +163,10 @@ void checkNetworkStatus() {
   static unsigned long lastCheck = 0;
   if (millis() - lastCheck < 5000) return; // Check every 5 seconds
   
-  bool currentStatus = GUI.isConnected();
+  // Check if we still have a valid IP address
+  String currentIP = GUI.getIP();
+  bool currentStatus = (currentIP != "0.0.0.0" && currentIP.length() > 0);
+  
   if (currentStatus != networkConnected) {
     networkConnected = currentStatus;
     if (networkConnected) {
@@ -167,20 +182,27 @@ void checkNetworkStatus() {
 }
 
 void reconnectNetwork() {
-  Serial.println("Disconnecting from current network...");
-  GUI.disconnect();
-  delay(2000);
+  Serial.println("🔄 Attempting WiFi reconnection...");
+  Serial.println("Connecting to WiFi...");
   
-  Serial.println("Attempting to reconnect...");
-  if (GUI.startStation(WIFI_SSID, WIFI_PASSWORD)) {
-    networkConnected = true;
-    connectStartTime = millis();
-    Serial.println("✅ Reconnection successful!");
-    Serial.println("📍 IP Address: " + GUI.getIP());
-  } else {
-    networkConnected = false;
-    Serial.println("❌ Reconnection failed!");
+  // Use the same connection method as main setup
+  GUI.connectWiFi(WIFI_SSID, WIFI_PASSWORD);
+  
+  // Wait for IP assignment
+  delay(2000);
+  String ip = GUI.getIP();
+  while (ip == "0.0.0.0" || ip.length() == 0) {
+    Serial.println("Waiting for IP address...");
+    delay(1000);
+    ip = GUI.getIP();
   }
+  
+  networkConnected = true;
+  connectStartTime = millis();
+  Serial.println("✅ Reconnection successful!");
+  Serial.println("=================================");
+  Serial.println("IP Address: " + GUI.getIP());
+  Serial.println("=================================");
 }
 
 void updateNetworkMonitoring() {
@@ -188,9 +210,8 @@ void updateNetworkMonitoring() {
   if (millis() - lastUpdate < 2000) return; // Update every 2 seconds
   
   if (networkConnected) {
-    // Update signal strength (simulate or use actual RSSI)
-    int rssi = GUI.getSignalStrength(); // This would need to be implemented in WebGUI
-    if (rssi == 0) rssi = random(-80, -30); // Simulate for now
+    // Simulate signal strength (in a real implementation, you'd get actual RSSI)
+    int rssi = random(-80, -30); // Simulate signal strength
     signalStrength.setValue(rssi);
     
     // Update connection time
@@ -208,8 +229,6 @@ void printNetworkInfo() {
   Serial.println("=== Network Information ===");
   Serial.println("📡 SSID: " + String(WIFI_SSID));
   Serial.println("📍 IP Address: " + GUI.getIP());
-  Serial.println("🌐 Gateway: " + GUI.getGateway()); // Would need implementation
-  Serial.println("🔧 DNS: " + GUI.getDNS()); // Would need implementation
   Serial.println("📶 Signal: " + String(signalStrength.getIntValue()) + " dBm");
   Serial.println("⏱️ Connected: " + String(connectionTime.getIntValue()) + " minutes");
   Serial.println("🔗 Status: " + String(networkConnected ? "CONNECTED" : "DISCONNECTED"));

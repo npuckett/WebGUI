@@ -6,12 +6,36 @@
 
 A simple and powerful web-based GUI library for Arduino that enables you to create beautiful control interfaces accessible through any web browser. Perfect for IoT projects, home automation, and remote device control.
 
+## Table of Contents
+
+- [Features](#features)
+- [Compatible Hardware](#compatible-hardware)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+  - [WebGUI Class](#webgui-class)
+  - [Button Class](#button-class)
+  - [Slider Class](#slider-class)
+  - [SensorStatus Class](#sensorstatus-class)
+- [Styling and Themes](#styling-and-themes)
+- [Layout Guidelines](#layout-guidelines)
+- [Network Configuration](#network-configuration)
+- [Usage Instructions](#usage-instructions)
+- [Advanced Examples](#advanced-examples)
+- [Example Projects](#example-projects)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+- [Contributing](#contributing)
+- [Support](#support)
+
 ## Features
 
 - **Web-Based Interface**: Access your Arduino through any web browser - no app installation required
 - **Mobile-Friendly**: Responsive design works on phones, tablets, and computers
-- **Easy Controls**: Simple buttons and sliders with real-time updates
-- **WiFi Access Point**: Creates its own WiFi network for direct connection
+- **Interactive Controls**: Buttons, sliders, and status displays with real-time updates
+- **Debounced Input**: Smart client-side debouncing prevents network flooding
+- **Status Monitoring**: Read-only displays for sensor data and system status
+- **WiFi Connectivity**: Access Point mode or connect to existing WiFi networks
 - **Customizable Themes**: Built-in themes and custom CSS support
 - **Real-Time Updates**: Instant feedback between web interface and Arduino
 - **Cross-Platform**: Works on multiple Arduino boards
@@ -44,6 +68,7 @@ A simple and powerful web-based GUI library for Arduino that enables you to crea
 // Create controls
 Button myButton("Click Me!", 20, 50);
 Slider mySlider("Brightness", 20, 100, 0, 255, 128);
+SensorStatus temperature("Temperature");
 
 void setup() {
   Serial.begin(115200);
@@ -54,6 +79,7 @@ void setup() {
   // Add controls to GUI
   GUI.addElement(&myButton);
   GUI.addElement(&mySlider);
+  GUI.addElement(&temperature);
   
   // Start web server
   GUI.begin();
@@ -71,6 +97,9 @@ void loop() {
   
   int brightness = mySlider.getIntValue();
   // Use brightness value...
+  
+  // Update status display
+  temperature.setValue("25.3 C");
 }
 ```
 
@@ -124,6 +153,21 @@ void setValue(value);                  // Set slider value
 void setRange(min, max);              // Change min/max values
 ```
 
+### SensorStatus Class
+
+#### Constructor
+```cpp
+SensorStatus(label);                   // Create read-only status display
+```
+
+#### Methods
+```cpp
+void setValue(int value);              // Set integer value
+void setValue(float value);            // Set float value
+void setValue(bool value);             // Set boolean value (true/false)
+void setValue(String value);           // Set string value (with units)
+```
+
 ## Styling and Themes
 
 ### Built-in Themes
@@ -154,6 +198,12 @@ GUI.setCustomCSS(
 - Vertical spacing: 70px recommended between sliders
 - Example: `Slider("S1", 20, 100, ...)`, `Slider("S2", 20, 170, ...)`
 
+### SensorStatus Layout
+- Automatically positioned in order added
+- No manual positioning required
+- Displays as label: value pairs
+- Perfect for monitoring sensor data without Serial output
+
 ## Network Configuration
 
 ### Access Point Mode (Default)
@@ -180,12 +230,17 @@ GUI.connectWiFi("YourWiFi", "wifipassword");
 
 ## Advanced Examples
 
-### Multiple Controls
+### Multiple Controls with Status Monitoring
 ```cpp
 Button power("Power", 20, 50);
 Button reset("Reset", 140, 50);
 Slider speed("Speed", 20, 100, 0, 100, 50);
 Slider angle("Angle", 20, 170, 0, 180, 90);
+
+// Status displays
+SensorStatus temperature("Temperature");
+SensorStatus systemLoad("System Load");
+SensorStatus uptime("Uptime");
 
 void setup() {
   GUI.startAP("Robot-Control", "robot123");
@@ -196,7 +251,41 @@ void setup() {
   GUI.addElement(&reset);
   GUI.addElement(&speed);
   GUI.addElement(&angle);
+  GUI.addElement(&temperature);
+  GUI.addElement(&systemLoad);
+  GUI.addElement(&uptime);
   
+  GUI.begin();
+}
+
+void loop() {
+  GUI.update();
+  
+  // Update status displays
+  temperature.setValue("23.5 C");
+  systemLoad.setValue("45%");
+  uptime.setValue(String(millis() / 60000) + " min");
+  
+  // Handle controls...
+}
+```
+
+### Station Mode (Connect to existing WiFi)
+```cpp
+void setup() {
+  Serial.begin(115200);
+  
+  // Connect to existing WiFi network
+  if (GUI.connectWiFi("YourWiFi", "wifipassword")) {
+    Serial.println("Connected to WiFi");
+    Serial.println("Web interface: http://" + GUI.getIP());
+  } else {
+    Serial.println("WiFi connection failed");
+    // Fallback to Access Point mode
+    GUI.startAP("Backup-AP", "backup123");
+  }
+  
+  // Add your controls and start server
   GUI.begin();
 }
 ```
@@ -208,8 +297,17 @@ void setup() {
     "body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }"
     ".webgui-button { box-shadow: 0 8px 16px rgba(0,0,0,0.3); }"
     ".webgui-slider { accent-color: #ff6b6b; }"
+    ".webgui-status { background: #f8f9fa; border-left: 4px solid #007bff; }"
   );
 }
+```
+
+### Debouncing Performance
+The library automatically implements client-side debouncing for sliders to prevent network flooding:
+- Default debounce delay: 100ms
+- Prevents rapid network requests during slider dragging
+- Maintains responsive UI while protecting Arduino from overload
+- No additional configuration required
 ```
 
 ## Troubleshooting
@@ -230,6 +328,46 @@ void setup() {
 - Ensure `GUI.update()` is called in `loop()`
 - Check Serial Monitor for error messages
 - Verify control positioning doesn't overlap
+
+**Slider performance issues**
+- Library includes automatic debouncing to prevent network flooding
+- If experiencing lag, check for Serial.print() in tight loops
+- Consider reducing update frequency for non-critical operations
+
+**SensorStatus not updating**
+- Ensure you're calling setValue() with current data
+- Check that GUI.update() is being called regularly
+- Verify the status display was added with GUI.addElement()
+
+## Example Projects
+
+The library includes several complete examples to help you get started:
+
+### BasicControls.ino
+**Description**: Simple introduction showing basic button and slider usage with LED control.
+- **Features**: Single button, single slider, LED brightness control
+- **Best for**: Learning the basics, first-time users
+- **Hardware**: Built-in LED (pin 2), basic Arduino setup
+
+### WiFiStationMode.ino  
+**Description**: Demonstrates connecting to an existing WiFi network instead of creating an access point.
+- **Features**: WiFi station mode, network connection validation, fallback AP mode
+- **Best for**: Integrating with home/office networks, internet-connected projects
+- **Hardware**: Any supported Arduino with WiFi capability
+
+### MultipleDevices.ino
+**Description**: Comprehensive smart home control system with multiple devices and real-time monitoring.
+- **Features**: Multiple buttons and sliders, servo control, fan control, temperature monitoring, system status displays
+- **Best for**: Complex projects, home automation, multi-device control
+- **Hardware**: LED (pin 2), Servo (pin 9), Fan/Motor (pin 10), Temperature sensor (A0)
+
+### DebugDisplay.ino
+**Description**: Shows how to use SensorStatus for real-time debugging without Serial Monitor.
+- **Features**: Real-time variable monitoring, slider value debugging, web-based status display
+- **Best for**: Debugging projects, monitoring system state, development assistance
+- **Hardware**: Basic Arduino setup, any sensors or controls you want to monitor
+
+Each example includes detailed comments explaining the code structure and can be used as a starting point for your own projects.
 
 **Compilation errors**
 - Install required WiFi libraries (WiFiS3, WiFiNINA)

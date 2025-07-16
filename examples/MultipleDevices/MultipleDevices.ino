@@ -35,20 +35,20 @@ const int TEMP_SENSOR_PIN = A0;
 Servo myServo;
 
 // Device Control Buttons (Row 1)
-Button ledToggle("💡 LED", 20, 50, 90, 40);
-Button servoHome("🏠 Servo Home", 120, 50, 110, 40);
-Button fanToggle("🌀 Fan", 240, 50, 90, 40);
-Button emergencyStop("🛑 STOP ALL", 340, 50, 110, 40);
+Button ledToggle("LED", 20, 50, 90, 40);
+Button servoHome("Servo Home", 120, 50, 110, 40);
+Button fanToggle("Fan", 240, 50, 90, 40);
+Button emergencyStop("STOP ALL", 340, 50, 110, 40);
 
 // Control Sliders (Column 1)
 Slider ledBrightness("LED Brightness", 20, 110, 0, 255, 128, 180);
 Slider servoAngle("Servo Angle", 20, 190, 0, 180, 90, 180);
 Slider fanSpeed("Fan Speed", 20, 270, 0, 255, 100, 180);
 
-// Monitoring Sliders (Column 2) - Read-only display
-Slider temperatureDisplay("Temperature (°C)", 220, 110, 0, 50, 25, 180);
-Slider systemLoad("System Load %", 220, 190, 0, 100, 45, 180);
-Slider uptime("Uptime (min)", 220, 270, 0, 1440, 0, 180);
+// Monitoring Displays (Column 2) - Read-only status
+SensorStatus temperatureDisplay("Temperature");
+SensorStatus systemLoad("System Load");
+SensorStatus uptime("Uptime");
 
 // Device states
 bool ledState = false;
@@ -74,7 +74,7 @@ void setup() {
   
   // Configure interface
   GUI.setTitle("Multi-Device Controller");
-  GUI.setHeading("🏠 Smart Home Control Center");
+  GUI.setHeading("Smart Home Control Center");
   
   // Add custom styling for device groups
   GUI.setCustomCSS(
@@ -97,7 +97,7 @@ void setup() {
     // Emergency Stop (Red theme)
     "#element_3 { background: linear-gradient(145deg, #e74c3c, #c0392b); border-radius: 10px; color: white; font-weight: bold; } "
     
-    // Monitoring displays (Gray theme)
+    // Status displays (Gray theme)
     "#element_7_container, #element_8_container, #element_9_container { "
     "  border-left: 4px solid #95a5a6; background: #ecf0f1; border-radius: 8px; "
     "} "
@@ -132,14 +132,14 @@ void loop() {
   // Handle button controls
   if (ledToggle.wasPressed()) {
     ledState = !ledState;
-    Serial.println("💡 LED " + String(ledState ? "ON" : "OFF"));
+    Serial.println("LED " + String(ledState ? "ON" : "OFF"));
   }
   
   if (servoHome.wasPressed()) {
     currentServoAngle = 90;
     servoAngle.setValue(90);
     myServo.write(90);
-    Serial.println("🏠 Servo moved to home position");
+    Serial.println("Servo moved to home position");
   }
   
   if (fanToggle.wasPressed()) {
@@ -149,7 +149,7 @@ void loop() {
       currentFanSpeed = 0;
       fanSpeed.setValue(0);
     }
-    Serial.println("🌀 Fan " + String(fanState ? "ON" : "OFF"));
+    Serial.println("Fan " + String(fanState ? "ON" : "OFF"));
   }
   
   if (emergencyStop.wasPressed()) {
@@ -169,7 +169,7 @@ void loop() {
     fanSpeed.setValue(0);
     servoAngle.setValue(90);
     
-    Serial.println("🛑 EMERGENCY STOP - All devices stopped!");
+    Serial.println("EMERGENCY STOP - All devices stopped!");
   }
   
   // Read control slider values
@@ -212,7 +212,7 @@ void updateMonitoringDisplays() {
   // Simulate temperature reading (replace with real sensor)
   int tempReading = analogRead(TEMP_SENSOR_PIN);
   int temperature = map(tempReading, 0, 1023, 15, 35); // Simulate 15-35°C range
-  temperatureDisplay.setValue(temperature);
+  temperatureDisplay.setValue(String(temperature) + " C");
   
   // Calculate system load based on active devices
   int load = 0;
@@ -220,22 +220,22 @@ void updateMonitoringDisplays() {
   if (fanState) load += 40;
   if (currentServoAngle != 90) load += 15; // Servo active if not at home
   load += random(5, 15); // Add some variation
-  systemLoad.setValue(constrain(load, 0, 100));
+  systemLoad.setValue(String(constrain(load, 0, 100)) + "%");
   
   // Update uptime in minutes
   unsigned long uptimeMinutes = (millis() - startTime) / 60000;
-  uptime.setValue(min((int)uptimeMinutes, 1440)); // Max 24 hours display
+  uptime.setValue(String(min((int)uptimeMinutes, 1440)) + " min");
   
   lastUpdate = millis();
 }
 
 void printSystemStatus() {
   Serial.println("--- System Status ---");
-  Serial.println("💡 LED: " + String(ledState ? "ON" : "OFF") + " (Brightness: " + String(currentBrightness) + ")");
-  Serial.println("🏠 Servo: " + String(currentServoAngle) + "°");
-  Serial.println("🌀 Fan: " + String(fanState ? "ON" : "OFF") + " (Speed: " + String(currentFanSpeed) + ")");
-  Serial.println("🌡️ Temperature: " + String(temperatureDisplay.getIntValue()) + "°C");
-  Serial.println("📊 System Load: " + String(systemLoad.getIntValue()) + "%");
-  Serial.println("⏱️ Uptime: " + String(uptime.getIntValue()) + " minutes");
+  Serial.println("LED: " + String(ledState ? "ON" : "OFF") + " (Brightness: " + String(currentBrightness) + ")");
+  Serial.println("Servo: " + String(currentServoAngle) + " degrees");
+  Serial.println("Fan: " + String(fanState ? "ON" : "OFF") + " (Speed: " + String(currentFanSpeed) + ")");
+  Serial.println("Temperature: " + String(map(analogRead(TEMP_SENSOR_PIN), 0, 1023, 15, 35)) + " C");
+  Serial.println("System Load: " + String(constrain((ledState ? 20 : 0) + (fanState ? 40 : 0) + (currentServoAngle != 90 ? 15 : 0) + random(5, 15), 0, 100)) + "%");
+  Serial.println("Uptime: " + String((millis() - startTime) / 60000) + " minutes");
   Serial.println("--------------------");
 }
