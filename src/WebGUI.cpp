@@ -37,7 +37,7 @@ const char HTML_TEMPLATE[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 const char BUTTON_TEMPLATE[] PROGMEM = R"rawliteral(
-        <button id="%ID%" class="webgui-button webgui-button-primary" onclick="buttonClick('%ID%')">%LABEL%</button>
+        <button id="%ID%" class="webgui-button" onclick="buttonClick('%ID%')">%LABEL%</button>
 )rawliteral";
 
 const char SLIDER_TEMPLATE[] PROGMEM = R"rawliteral(
@@ -51,6 +51,23 @@ const char SENSOR_STATUS_TEMPLATE[] PROGMEM = R"rawliteral(
         <div class="webgui-sensor-container">
             <label class="webgui-sensor-label">%LABEL%</label>
             <span class="webgui-sensor-value" id="%ID%_display">%VALUE%</span>
+        </div>
+)rawliteral";
+
+const char TOGGLE_TEMPLATE[] PROGMEM = R"rawliteral(
+        <div class="webgui-toggle-container">
+            <label class="webgui-toggle-label">%LABEL%</label>
+            <label class="webgui-toggle-switch">
+                <input type="checkbox" id="%ID%" class="webgui-toggle-input" onchange="toggleChange('%ID%', this.checked)">
+                <span class="webgui-toggle-slider"></span>
+            </label>
+        </div>
+)rawliteral";
+
+const char SYSTEM_STATUS_TEMPLATE[] PROGMEM = R"rawliteral(
+        <div class="webgui-system-container">
+            <label class="webgui-system-label">%LABEL%</label>
+            <div class="webgui-system-content" id="%ID%_display">%VALUE%</div>
         </div>
 )rawliteral";
 
@@ -195,13 +212,12 @@ void WebGUI::processClient() {
                             client.println();
                             client.println(response);
                         } else {
-                            // Default route - send main page
-                            String html = generateHTML();
+                            // MEMORY OPTIMIZED: Stream HTML directly instead of building large strings
                             client.println("HTTP/1.1 200 OK");
                             client.println("Content-Type: text/html");
                             client.println("Connection: close");
                             client.println();
-                            client.println(html);
+                            streamHTML(client);
                         }
                         break;
                     } else {
@@ -340,9 +356,29 @@ String WebGUI::generateCSS() {
 
 String WebGUI::generateJS() {
     String js = R"rawliteral(
+        // Button state tracking
+        var buttonStates = {};
+        
         function buttonClick(id) {
             fetch('/set?' + id + '=1');
         }
+        
+        function toggleChange(id, checked) {
+            fetch('/set?' + id + '=' + (checked ? 'true' : 'false'));
+        }
+        
+        // Initialize button states on page load
+        function initializeButtonStates() {
+            // Set all buttons to inactive state initially
+            var buttons = document.querySelectorAll('.webgui-button');
+            buttons.forEach(function(button) {
+                buttonStates[button.id] = false;
+                button.classList.add('webgui-button-inactive');
+            });
+        }
+        
+        // Call initialization when page loads
+        document.addEventListener('DOMContentLoaded', initializeButtonStates);
         
         // Original immediate slider function (for backward compatibility)
         function sliderChange(id, value) {
@@ -374,91 +410,119 @@ String WebGUI::generateJS() {
     return js;
 }
 
-// GUIElement Implementation
+// MEMORY OPTIMIZED: Stream HTML directly instead of building large strings in memory
+void WebGUI::streamHTML(WiFiClient& client) {
+    // Send HTML template start - broken into small chunks
+    client.print("<!DOCTYPE html><html><head><meta charset=\"UTF-8\">");
+    client.print("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+    client.print("<title>");
+    client.print(pageTitle);
+    client.print("</title><style>");
+    
+    // Stream minimal CSS directly 
+    client.print(WEBGUI_DEFAULT_CSS);
+    
+    client.print("</style></head><body><h1>");
+    client.print(pageHeading);
+    client.print("</h1>");
+    
+    // Stream each element's HTML directly
+    for (GUIElement* element : elements) {
+        String elementHTML = element->generateHTML();
+        client.print(elementHTML);
+    }
+    
+    // Stream JavaScript - minimal version
+    client.print("<script>");
+    client.print("function updateValue(id,val){");
+    client.print("fetch('/set?'+id+'='+val).catch(e=>console.log('Error:',e));");
+    client.print("}");
+    client.print("function buttonClick(id){");
+    client.print("fetch('/set?'+id+'=1').catch(e=>console.log('Error:',e));");
+    client.print("}");
+    client.print("function toggleChange(id,checked){");
+    client.print("fetch('/set?'+id+'='+(checked?'true':'false')).catch(e=>console.log('Error:',e));");
+    client.print("}");
+    client.print("function toggleButton(id){");
+    client.print("const btn=document.getElementById(id);");
+    client.print("const newState=btn.textContent==='ON'?'OFF':'ON';");
+    client.print("btn.textContent=newState;");
+    client.print("updateValue(id,newState==='ON'?'1':'0');");
+    client.print("}");
+    
+    // Auto-update function for SensorStatus displays
+    client.print("function updateSensorDisplays(){");
+    client.print("fetch('/get').then(response=>response.json()).then(data=>{");
+    client.print("let debugArea=document.getElementById('debug_area');");
+    client.print("if(!debugArea){debugArea=document.createElement('div');debugArea.id='debug_area';");
+    client.print("debugArea.style.cssText='position:fixed;top:10px;right:10px;background:rgba(0,0,0,0.8);color:white;padding:10px;font-size:12px;max-width:300px;';");
+    client.print("document.body.appendChild(debugArea);}");
+    client.print("debugArea.innerHTML='Last update: '+new Date().toLocaleTimeString()+'<br>Data: '+JSON.stringify(data);");
+    client.print("for(let elementId in data){");
+    client.print("let displayElement=document.getElementById(elementId+'_display');");
+    client.print("if(displayElement){displayElement.textContent=data[elementId];");
+    client.print("debugArea.innerHTML+='<br>Updated: '+elementId+'_display = '+data[elementId];}");
+    client.print("else{debugArea.innerHTML+='<br>NOT FOUND: '+elementId+'_display';}");
+    client.print("let toggleElement=document.getElementById(elementId);");
+    client.print("if(toggleElement&&toggleElement.type==='checkbox'){");
+    client.print("let shouldBeChecked=(data[elementId]==='true'||data[elementId]==='1');");
+    client.print("if(toggleElement.checked!==shouldBeChecked){toggleElement.checked=shouldBeChecked;}}}");
+    client.print("}).catch(error=>{");
+    client.print("let debugArea=document.getElementById('debug_area');");
+    client.print("if(!debugArea){debugArea=document.createElement('div');debugArea.id='debug_area';");
+    client.print("debugArea.style.cssText='position:fixed;top:10px;right:10px;background:rgba(255,0,0,0.8);color:white;padding:10px;font-size:12px;max-width:300px;';");
+    client.print("document.body.appendChild(debugArea);}");
+    client.print("debugArea.innerHTML='ERROR: '+error.toString();});}");
+    
+    // Start auto-updating sensor displays every 500ms
+    client.print("setInterval(updateSensorDisplays,500);");
+    client.print("updateSensorDisplays();");
+    
+    // Stream each element's JavaScript for event handlers
+    for (GUIElement* element : elements) {
+        String elementJS = element->generateJS();
+        client.print(elementJS);
+    }
+    
+    client.print("</script></body></html>");
+}
+
+// =====================================================
+// GUIElement Base Class Implementation  
+// =====================================================
+
 GUIElement::GUIElement(String label, int x, int y, int width, int height) 
     : label(label), x(x), y(y), width(width), height(height) {
     id = "element" + String(nextID++);
 }
 
 GUIElement::~GUIElement() {
+    // Base destructor
 }
 
 String GUIElement::generateCSS() {
-    return generateBaseCSS();
-}
-
-String GUIElement::generateBaseCSS() {
-    return "#" + id + " {\n" +
-           "    position: absolute;\n" +
-           "    left: " + String(x) + "px;\n" +
-           "    top: " + String(y) + "px;\n" +
-           "    width: " + String(width) + "px;\n" +
-           "    height: " + String(height) + "px;\n" +
-           "}\n";
-}
-
-void GUIElement::setPosition(int newX, int newY) {
-    x = newX;
-    y = newY;
-}
-
-void GUIElement::setSize(int newWidth, int newHeight) {
-    width = newWidth;
-    height = newHeight;
-}
-
-// Button Implementation
-Button::Button(String label, int x, int y, int width, int height) 
-    : GUIElement(label, x, y, width, height), pressed(false), pressedFlag(false), lastPressTime(0), buttonStyle("primary") {
-}
-
-String Button::generateHTML() {
-    String html = String(BUTTON_TEMPLATE);
-    html.replace("%ID%", id);
-    html.replace("%LABEL%", label);
-    return html;
-}
-
-String Button::generateCSS() {
-    return String("#") + id + " { position: absolute; left: " + String(x) + 
-           "px; top: " + String(y) + "px; width: " + String(width) + 
-           "px; height: " + String(height) + "px; }\n";
-}
-
-String Button::generateJS() {
+    // Base implementation - memory optimized: return empty string
     return "";
 }
 
-void Button::handleUpdate(String value) {
-    if (value == "1") {
-        pressed = true;
-        pressedFlag = true;
-        lastPressTime = millis();
-    }
+String GUIElement::generateJS() {
+    // Base implementation - memory optimized: return empty string
+    return "";
 }
 
-String Button::getValue() {
-    return pressed ? "1" : "0";
+void GUIElement::handleUpdate(String value) {
+    // Base implementation - does nothing by default
 }
 
-bool Button::wasPressed() {
-    if (pressedFlag) {
-        pressedFlag = false;
-        return true;
-    }
-    return false;
+String GUIElement::getValue() {
+    // Base implementation - returns empty string
+    return "";
 }
 
-bool Button::isPressed() {
-    return pressed;
-}
-
-void Button::resetPress() {
-    pressed = false;
-    pressedFlag = false;
-}
-
+// =====================================================
 // Slider Implementation
+// =====================================================
+
 Slider::Slider(String label, int x, int y, int minValue, int maxValue, int defaultValue, int width) 
     : GUIElement(label, x, y, width, 60), minValue(minValue), maxValue(maxValue), currentValue(defaultValue), valueChanged(false) {
 }
@@ -471,17 +535,6 @@ String Slider::generateHTML() {
     html.replace("%MAX%", String(maxValue));
     html.replace("%VALUE%", String(currentValue));
     return html;
-}
-
-String Slider::generateCSS() {
-    return String("#") + id + "_container { position: absolute; left: " + String(x) + 
-           "px; top: " + String(y) + "px; width: " + String(width) + "px; }\n";
-}
-
-String Slider::generateJS() {
-    // Generate JavaScript that configures this specific slider to use debouncing
-    return "document.getElementById('" + id + "').oninput = function() { debouncedSliderChange('" + 
-           id + "', this.value, " + String(debounceMs) + "); };\n";
 }
 
 void Slider::handleUpdate(String value) {
@@ -514,9 +567,141 @@ void Slider::setRange(int min, int max) {
     currentValue = constrain(currentValue, minValue, maxValue);
 }
 
+String Slider::generateCSS() {
+    // Memory optimized: return empty string since we're using minimal CSS
+    return "";
+}
+
+String Slider::generateJS() {
+    // Memory optimized: return minimal JavaScript for slider updates with value display
+    return "document.getElementById('" + id + "').oninput = function() { "
+           "document.getElementById('" + id + "_value').textContent = this.value; "
+           "updateValue('" + id + "', this.value); };\n";
+}
+
+// Button Implementation
+Button::Button(String label, int x, int y, int width, int height) 
+    : GUIElement(label, x, y, width, height), pressed(false), pressedFlag(false), lastPressTime(0), buttonStyle("primary") {
+}
+
+String Button::generateHTML() {
+    String html = String(BUTTON_TEMPLATE);
+    html.replace("%ID%", id);
+    html.replace("%LABEL%", label);
+    return html;
+}
+
+String Button::generateCSS() {
+    // Memory optimized: return empty string since we're using minimal CSS
+    return "";
+}
+
+String Button::generateJS() {
+    // JavaScript for button functionality is in the main JS template (buttonClick function)
+    return "";
+}
+
+void Button::handleUpdate(String value) {
+    if (value == "1") {
+        pressed = !pressed;  // Toggle state on each click
+        pressedFlag = true;
+        lastPressTime = millis();
+    }
+}
+
+String Button::getValue() {
+    return pressed ? "1" : "0";
+}
+
+bool Button::wasPressed() {
+    if (pressedFlag) {
+        pressedFlag = false;
+        return true;
+    }
+    return false;
+}
+
+bool Button::isPressed() {
+    return pressed;
+}
+
+void Button::resetPress() {
+    pressed = false;
+    pressedFlag = false;
+}
+
+void Button::setState(bool state) {
+    pressed = state;
+}
+
+void Button::setButtonStyle(String style) {
+    buttonStyle = style;
+}
+
+// Toggle Implementation
+Toggle::Toggle(String label, int x, int y, int width) 
+    : GUIElement(label, x, y, width, 40), state(false), stateChanged(false) {
+}
+
+String Toggle::generateHTML() {
+    String html = String(TOGGLE_TEMPLATE);
+    html.replace("%ID%", id);
+    html.replace("%LABEL%", label);
+    
+    // Set initial checkbox state based on current toggle state
+    if (state) {
+        html.replace("type=\"checkbox\"", "type=\"checkbox\" checked");
+    }
+    
+    return html;
+}
+
+String Toggle::generateCSS() {
+    // Memory optimized: return empty string since we're using minimal CSS
+    return "";
+}
+
+String Toggle::generateJS() {
+    // JavaScript for toggle functionality is in the main JS template (toggleChange function)
+    return "";
+}
+
+void Toggle::handleUpdate(String value) {
+    bool newState = (value == "1" || value == "true");
+    if (newState != state) {
+        state = newState;
+        stateChanged = true;
+    }
+}
+
+String Toggle::getValue() {
+    return state ? "1" : "0";
+}
+
+bool Toggle::isOn() {
+    return state;
+}
+
+bool Toggle::wasToggled() {
+    if (stateChanged) {
+        stateChanged = false;
+        return true;
+    }
+    return false;
+}
+
+void Toggle::setState(bool newState) {
+    state = newState;
+}
+
+void Toggle::resetToggle() {
+    state = false;
+    stateChanged = false;
+}
+
 // SensorStatus Implementation
 SensorStatus::SensorStatus(String label, int x, int y, int width) 
-    : GUIElement(label, x, y, width, 40), displayValue("--") {
+    : GUIElement(label, x, y, width, 40), displayValue("0") {
 }
 
 String SensorStatus::generateHTML() {
@@ -528,16 +713,18 @@ String SensorStatus::generateHTML() {
 }
 
 String SensorStatus::generateCSS() {
-    return String("#") + id + "_container { position: absolute; left: " + String(x) + 
-           "px; top: " + String(y) + "px; width: " + String(width) + "px; }\n";
+    // Memory optimized: return empty string since we're using minimal CSS
+    return "";
 }
 
 String SensorStatus::generateJS() {
+    // SensorStatus is read-only, no JavaScript needed
     return "";
 }
 
 void SensorStatus::handleUpdate(String value) {
-    // Read-only element - updates come from setValue() calls in code
+    // SensorStatus is read-only, this method is not used
+    // Values are updated via setValue() methods from Arduino code
 }
 
 String SensorStatus::getValue() {
@@ -553,7 +740,7 @@ void SensorStatus::setValue(float value, int decimals) {
 }
 
 void SensorStatus::setValue(bool value) {
-    displayValue = value ? "TRUE" : "FALSE";
+    displayValue = value ? "true" : "false";
 }
 
 void SensorStatus::setValue(String value) {
@@ -562,44 +749,4 @@ void SensorStatus::setValue(String value) {
 
 void SensorStatus::setValue(const char* value) {
     displayValue = String(value);
-}
-
-// WebGUIStyleManager Implementation
-String WebGUIStyleManager::getDefaultCSS() {
-    return String(
-        "body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }\n"
-        ".container { background: white; padding: 30px; border-radius: 10px; max-width: 800px; margin: 0 auto; }\n"
-        "h1 { color: #333; text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; }\n"
-        ".webgui-button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }\n"
-        ".webgui-button:hover { background: #0056b3; }\n"
-        ".webgui-slider-container { background: #f8f9fa; border-radius: 10px; padding: 15px; margin: 10px 0; border: 1px solid #ddd; }\n"
-        ".webgui-slider-container label { display: block; margin-bottom: 8px; font-weight: bold; }\n"
-        ".webgui-slider-value { float: right; background: #007bff; color: white; padding: 4px 10px; border-radius: 15px; font-size: 13px; }\n"
-        ".webgui-slider { width: 100%; height: 8px; border-radius: 4px; background: #ddd; outline: none; }\n"
-        ".webgui-sensor-container { background: #f8f9fa; border-radius: 8px; padding: 12px; margin: 8px 0; border-left: 4px solid #6c757d; display: flex; align-items: center; }\n"
-        ".webgui-sensor-label { font-weight: bold; color: #495057; margin-right: auto; }\n"
-        ".webgui-sensor-value { font-family: monospace; font-size: 16px; font-weight: bold; color: #495057; }\n"
-    );
-}
-
-String WebGUIStyleManager::getThemedCSS(const WebGUITheme& theme) {
-    String css = getDefaultCSS();
-    return replaceThemeVariables(css, theme);
-}
-
-String WebGUIStyleManager::generateCustomCSS(const char* customCSS) {
-    return String(customCSS);
-}
-
-String WebGUIStyleManager::replaceThemeVariables(String css, const WebGUITheme& theme) {
-    // Replace theme variables in CSS
-    css.replace("%PRIMARY%", theme.primary);
-    css.replace("%SECONDARY%", theme.secondary);
-    css.replace("%SUCCESS%", theme.success);
-    css.replace("%DANGER%", theme.danger);
-    css.replace("%WARNING%", theme.warning);
-    css.replace("%BACKGROUND%", theme.background);
-    css.replace("%SURFACE%", theme.surface);
-    css.replace("%TEXT%", theme.text);
-    return css;
 }

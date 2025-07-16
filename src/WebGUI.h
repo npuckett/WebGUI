@@ -39,8 +39,10 @@
 // Forward declarations
 class GUIElement;
 class Button;
+class Toggle;
 class Slider;
 class SensorStatus;
+class SystemStatus;
 
 class WebGUI {
   public:
@@ -90,6 +92,7 @@ class WebGUI {
 #endif
     
     String generateHTML();
+    void streamHTML(WiFiClient& client);  // MEMORY OPTIMIZED: Stream instead of build large strings
     String generateCSS();
     String generateJS();
 };
@@ -136,6 +139,7 @@ class Button : public GUIElement {
     
     bool wasPressed();
     bool isPressed();
+    void setState(bool state);  // Set toggle state for visual feedback
     
     // Style options
     void setButtonStyle(String style = "primary"); // primary, secondary, success, danger, warning
@@ -147,6 +151,30 @@ class Button : public GUIElement {
     String buttonStyle;
     
     void resetPress();
+};
+
+class Toggle : public GUIElement {
+  public:
+    Toggle(String label, int x, int y, int width = 200);
+    
+    String generateHTML() override;
+    String generateCSS() override;
+    String generateJS() override;
+    void handleUpdate(String value) override;
+    String getValue() override;
+    
+    bool isOn();
+    bool wasToggled();
+    void setState(bool state);
+    
+    // Calculate proper height for positioning
+    static int getRequiredHeight() { return 40; }
+    
+  private:
+    bool state;
+    bool stateChanged;
+    
+    void resetToggle();
 };
 
 class Slider : public GUIElement {
@@ -205,6 +233,33 @@ class SensorStatus : public GUIElement {
     
   private:
     String displayValue;
+};
+
+class SystemStatus : public GUIElement {
+  public:
+    SystemStatus(String label, int x, int y, int width = 350);
+    
+    String generateHTML() override;
+    String generateCSS() override;
+    String generateJS() override;
+    void handleUpdate(String value) override; // Not used - read-only
+    String getValue() override;
+    
+    // Update system information
+    void updateMemory(int freeBytes);
+    void updateUptime(unsigned long uptimeSeconds);
+    void updateSystemInfo(int freeBytes, unsigned long uptimeSeconds);
+    
+    // Calculate proper height for positioning
+    static int getRequiredHeight() { return 80; }
+    
+  private:
+    String systemInfo;
+    int freeMemory;
+    unsigned long uptime;
+    
+    String formatUptime(unsigned long seconds);
+    String formatMemory(int bytes);
 };
 
 // Global instance - can be used directly or create your own
