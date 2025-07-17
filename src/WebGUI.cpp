@@ -144,10 +144,7 @@ void WebGUI::connectWiFi(const char* ssid, const char* password) {
 
 void WebGUI::setTitle(const char* title) {
     pageTitle = String(title);
-}
-
-void WebGUI::setHeading(const char* heading) {
-    pageHeading = String(heading);
+    pageHeading = String(title);  // Set both title and heading to the same value
 }
 
 void WebGUI::setCustomCSS(const char* customCSS) {

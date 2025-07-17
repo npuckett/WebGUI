@@ -52,8 +52,7 @@ const char* AP_NAME = "Arduino-Basic";     // WiFi network name
 const char* AP_PASSWORD = "webgui123";     // WiFi password (minimum 8 characters)
 
 // Web interface configuration
-const char* PAGE_TITLE = "Basic Controls";              // Browser tab title
-const char* PAGE_HEADING = "Arduino Basic Control Panel"; // Main page heading
+const char* PAGE_TITLE = "Arduino Basic Control Panel";     // Browser tab title and page heading
 
 // Control elements - these create the web interface buttons and sliders
 Toggle ledToggle("LED Toggle", 20, 50, 200);                   // Toggle: label, x, y, width
@@ -86,9 +85,7 @@ void setup() {
   GUI.startAP(AP_NAME, AP_PASSWORD);
   
   // Configure the web interface appearance
-  GUI.setTitle(PAGE_TITLE);              // Browser tab title
-  GUI.setHeading(PAGE_HEADING);          // Page heading
-  GUI.setTheme(WEBGUI_DEFAULT_THEME);    // Use default light theme
+  GUI.setTitle(PAGE_TITLE);              // Browser tab title and page heading
   
   // Add all control elements to the web interface
   // The order you add them determines their order on the page

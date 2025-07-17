@@ -1,5 +1,6 @@
 /*
-  Station_ServoTest.ino - WebGUI Library 3-Servo Control with Master Toggle (Station Mode)
+  Station_ServoTest.ino - WebGUI Library 3-Servo Control with Master Toggle (Stati// Web interface configuration
+const char* PAGE_TITLE = "3-Servo Test with Master Toggle";  // Browser tab title and page headingMode)
   
   DESCRIPTION:
   This example demonstrates controlling 3 servo motors with a master power toggle
@@ -85,8 +86,7 @@ const char* WIFI_SSID = "YourWiFiName";        // Your WiFi network name
 const char* WIFI_PASSWORD = "YourWiFiPassword"; // Your WiFi password
 
 // Web interface configuration
-const char* PAGE_TITLE = "Servo Test Control";                   // Browser tab title
-const char* PAGE_HEADING = "3-Servo Test with Master Toggle";    // Main page heading
+const char* PAGE_TITLE = "3-Servo Test with Master Toggle";  // Browser tab title and page heading
 
 // GUI Elements: Master toggle + 3 sliders = 4 total (Arduino UNO R4 WiFi limit)
 // Toggle constructor: Toggle(label, x, y, width)
@@ -145,9 +145,7 @@ void setup() {
   delay(2000);
   
   // Configure the web interface appearance
-  GUI.setTitle(PAGE_TITLE);              
-  GUI.setHeading(PAGE_HEADING);          
-  GUI.setTheme(WEBGUI_DEFAULT_THEME);    
+  GUI.setTitle(PAGE_TITLE);              // Browser tab title and page heading
   
   // Add GUI elements (4 total - respects Arduino UNO R4 WiFi limit)
   GUI.addElement(&masterToggle);      // Master toggle (element 1)

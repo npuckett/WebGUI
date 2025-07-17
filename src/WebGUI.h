@@ -65,7 +65,6 @@ class WebGUI {
     
     // Page configuration
     void setTitle(const char* title);
-    void setHeading(const char* heading);
     
     String getIP();
     

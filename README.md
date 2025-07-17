@@ -88,7 +88,6 @@ void setup() {
   
   // Configure interface
   GUI.setTitle("LED Controller");
-  GUI.setHeading("Simple LED Control");
   
   // Add toggle to GUI
   GUI.addElement(&ledToggle);
@@ -162,26 +161,12 @@ void loop() {
 
 #### Configuration Methods
 
-**setTitle(title)** - Set browser tab title
+**setTitle(title)** - Set browser tab title and page heading
 ```cpp
 void setup() {
   GUI.setTitle("Smart Home Controller");
   // Browser tab will show "Smart Home Controller"
-}
-```
-
-**setHeading(heading)** - Set page heading
-```cpp
-void setup() {
-  GUI.setHeading("Living Room Controls");
-  // Large heading at top of page
-}
-```
-
-**setTheme(theme)** - Apply color theme
-```cpp
-void setup() {
-  GUI.setTheme(WEBGUI_DEFAULT_THEME);  // Default theme
+  // Page heading will also be "Smart Home Controller"
 }
 ```
 
@@ -498,9 +483,7 @@ void loop() {
 ## Styling and Themes
 
 ### Built-in Themes
-```cpp
-GUI.setTheme(WEBGUI_DEFAULT_THEME);   // Default theme
-```
+The WebGUI library uses a single optimized theme designed for readability and performance across all devices.
 
 ### Custom CSS
 ```cpp
@@ -739,8 +722,6 @@ void setup() {
   
   // Interface configuration
   GUI.setTitle("Smart Home Control");
-  GUI.setHeading("Home Automation Dashboard");
-  GUI.setTheme(WEBGUI_DEFAULT_THEME);
   
   // Add all elements
   GUI.addElement(&powerBtn);
@@ -879,7 +860,6 @@ void setup() {
   
   GUI.connectWiFi("YourWiFi", "password");
   GUI.setTitle("Servo Controller");
-  GUI.setHeading("Precision Servo Control");
   
   GUI.addElement(&positionSlider);
   GUI.addElement(&homeBtn);

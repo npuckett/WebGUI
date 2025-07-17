@@ -60,8 +60,7 @@ const char* AP_NAME = "Arduino-SensorDebug";   // WiFi network name
 const char* AP_PASSWORD = "sensor123";         // WiFi password (minimum 8 characters)
 
 // Web interface configuration
-const char* PAGE_TITLE = "Sensor Debug";                    // Browser tab title
-const char* PAGE_HEADING = "Analog Sensor Debug Interface"; // Main page heading
+const char* PAGE_TITLE = "Analog Sensor Debug Interface"; // Browser tab title and page heading
 
 // Control elements - these create the web interface
 SensorStatus sensorDisplay("Sensor Value (A0)", 20, 50);          // Shows current sensor reading
@@ -89,9 +88,7 @@ void setup() {
   GUI.startAP(AP_NAME, AP_PASSWORD);
   
   // Configure the web interface appearance
-  GUI.setTitle(PAGE_TITLE);              // Browser tab title
-  GUI.setHeading(PAGE_HEADING);          // Page heading
-  GUI.setTheme(WEBGUI_DEFAULT_THEME);    // Use default light theme
+  GUI.setTitle(PAGE_TITLE);              // Browser tab title and page heading
   
   // Add all control elements to the web interface
   // The order you add them determines their order on the page

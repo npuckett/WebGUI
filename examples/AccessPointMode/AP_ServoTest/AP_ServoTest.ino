@@ -1,7 +1,8 @@
 /*
   AP_ServoTest.ino - WebGUI Library 3-Servo Control with Master Toggle
   
-  DESCRIPTION:
+ // Web interface configuration
+const char* PAGE_TITLE = "3-Servo Test with Master Toggle";  // Browser tab title and page headingSCRIPTION:
   This example demonstrates controlling 3 servo motors with a master power toggle
   in Access Point mode. Features a memory-optimized WebGUI interface with real-time
   servo position control and master on/off functionality.
@@ -80,8 +81,7 @@ const char* AP_NAME = "Arduino-ServoControl";     // WiFi network name
 const char* AP_PASSWORD = "servo123";             // WiFi password (minimum 8 characters)
 
 // Web interface configuration
-const char* PAGE_TITLE = "Servo Test Control";                   // Browser tab title
-const char* PAGE_HEADING = "3-Servo Test with Master Toggle";    // Main page heading
+const char* PAGE_TITLE = "3-Servo Test with Master Toggle";  // Browser tab title and page heading
 
 // GUI Elements: Master toggle + 3 sliders = 4 total (Arduino UNO R4 WiFi limit)
 // Toggle constructor: Toggle(label, x, y, width)
@@ -139,9 +139,7 @@ void setup() {
   delay(2000);
   
   // Configure the web interface appearance
-  GUI.setTitle(PAGE_TITLE);              
-  GUI.setHeading(PAGE_HEADING);          
-  GUI.setTheme(WEBGUI_DEFAULT_THEME);    
+  GUI.setTitle(PAGE_TITLE);              // Browser tab title and page heading
   
   // Add GUI elements (4 total - respects Arduino UNO R4 WiFi limit)
   GUI.addElement(&masterToggle);      // Master toggle (element 1)

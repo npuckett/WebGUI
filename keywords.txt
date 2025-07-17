@@ -26,9 +26,7 @@ addElement	KEYWORD2
 startAP	KEYWORD2
 connectWiFi	KEYWORD2
 setTitle	KEYWORD2
-setHeading	KEYWORD2
 setCustomCSS	KEYWORD2
-setTheme	KEYWORD2
 useDefaultStyles	KEYWORD2
 getIP	KEYWORD2
 generateHTML	KEYWORD2
