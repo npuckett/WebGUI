@@ -1072,10 +1072,24 @@ The library includes comprehensive examples for both Access Point and Station Mo
 - **Hardware**: LED on pin 2, Arduino UNO R4 WiFi or compatible
 - **Network**: Creates "Arduino-WebGUI" network, accessible at 192.168.4.1
 
-#### AP_LEDToggle.ino
+#### AP_ToggleAnLED.ino
+**Description**: The simplest possible WebGUI example - just toggle the built-in LED on and off.
+- **Features**: Single LED toggle control for built-in LED, minimal code example
+- **Best for**: Learning the basics, first WebGUI project, no external components
+- **Hardware**: Built-in LED only (no additional components needed)
+- **Network**: Creates "My-Arduino" network, accessible at 192.168.4.1
+
+#### AP_BlinkAnLED.ino
+**Description**: LED blink control with toggle enable/disable and adjustable blink rate.
+- **Features**: Toggle to enable/disable blinking, slider for blink rate control, millis-based timing
+- **Best for**: Learning timing control, non-blocking LED patterns, rate adjustment
+- **Hardware**: Built-in LED only (no additional components needed)
+- **Network**: Creates "Arduino-BlinkLED" network for standalone blink control
+
+#### AP_SwitchPanel.ino
 **Description**: Multiple LED control using toggle switches in Access Point mode.
 - **Features**: 4 LED toggle controls, individual LED management, real-time status
-- **Best for**: Multi-device control, switch-like interfaces
+- **Best for**: Multi-device control, switch-like interfaces, panel control systems
 - **Hardware**: LEDs on pins 2-5 with 220Ω resistors
 - **Network**: Standalone operation, no external WiFi required
 
@@ -1102,10 +1116,24 @@ The library includes comprehensive examples for both Access Point and Station Mo
 - **Hardware**: LED on pin 2, Arduino UNO R4 WiFi or compatible  
 - **Network**: Connects to your home WiFi, accessible from any network device
 
-#### Station_LEDToggle.ino
+#### Station_ToggleAnLED.ino
+**Description**: The simplest possible WebGUI example integrated with your home network.
+- **Features**: Single LED toggle for built-in LED, home network integration
+- **Best for**: Learning WiFi integration, first network-connected project
+- **Hardware**: Built-in LED only (no additional components needed)
+- **Network**: Connects to your home WiFi, accessible from any network device
+
+#### Station_BlinkAnLED.ino
+**Description**: Network-integrated LED blink control with rate adjustment.
+- **Features**: Toggle enable/disable, slider rate control, home network access
+- **Best for**: Remote LED control, learning network timing patterns
+- **Hardware**: Built-in LED only (no additional components needed)
+- **Network**: Home WiFi integration for remote blink control
+
+#### Station_SwitchPanel.ino
 **Description**: Multi-LED control integrated with home network.
 - **Features**: 4 LED toggles, network integration, remote access capability
-- **Best for**: Room lighting control, permanent LED installations
+- **Best for**: Room lighting control, permanent LED installations, switch panels
 - **Hardware**: LEDs on pins 2-5 with 220Ω resistors
 - **Network**: Home WiFi integration, multiple device access
 
@@ -1136,7 +1164,7 @@ The library includes comprehensive examples for both Access Point and Station Mo
 ### Usage Instructions for Examples
 
 1. **Choose your mode**: Access Point for portable/standalone or Station for home integration
-2. **Select example**: Start with Basic, then try LEDToggle, SensorDebug, or ServoTest
+2. **Select example**: Start with ToggleAnLED, then try BlinkAnLED, SwitchPanel, SensorDebug, or ServoTest
 3. **Configure network**: Update WiFi credentials in Station mode examples
 4. **Upload sketch**: Use Arduino IDE or PlatformIO
 5. **Connect**: Access Point (192.168.4.1) or check Serial Monitor for Station IP
@@ -1144,8 +1172,8 @@ The library includes comprehensive examples for both Access Point and Station Mo
 
 ### Progression Path
 ```
-Beginner:     AP_Basic → AP_LEDToggle
-Intermediate: Station_Basic → Station_SensorDebug  
+Beginner:     AP_ToggleAnLED → AP_BlinkAnLED → AP_SwitchPanel
+Intermediate: Station_ToggleAnLED → Station_BlinkAnLED → Station_SensorDebug  
 Advanced:     Station_ServoTest → 8-LED Test
 ```
 
