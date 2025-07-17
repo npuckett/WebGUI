@@ -140,6 +140,24 @@ void setup() {
 }
 ```
 
+**Static IP Configuration** - Set fixed IP address in Station mode
+```cpp
+void setup() {
+  // Configure static IP before connecting (optional)
+  IPAddress staticIP(192, 168, 1, 100);    // Desired static IP
+  IPAddress gateway(192, 168, 1, 1);       // Router IP
+  IPAddress subnet(255, 255, 255, 0);      // Subnet mask
+  IPAddress dns(8, 8, 8, 8);               // DNS server
+  
+  WiFi.config(staticIP, gateway, subnet, dns);
+  
+  // Connect with static IP configuration
+  GUI.connectWiFi("HomeWiFi", "wifipass");
+  Serial.println("Static IP: " + GUI.getIP());
+  // Will print: "Static IP: 192.168.1.100"
+}
+```
+
 **begin()** - Start web server
 ```cpp
 void setup() {
