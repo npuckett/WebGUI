@@ -19,22 +19,16 @@ A simple and powerful web-based GUI library for Arduino that enables you to crea
   - [Slider Class](#slider-class)
   - [SensorStatus Class](#sensorstatus-class)
   - [TextBox Class](#textbox-class)
-- [Persistent Settings](#persistent-settings)
-- [Device Management](#device-management)
-- [Styling and Themes](#styling-and-themes)
-- [Layout Guidelines](#layout-guidelines)
-- [Network Configuration](#network-configuration)
-- [Advanced Network Features](#advanced-network-features)
-  - [Auto-Discovery](#auto-discovery)
-  - [Static IP Configuration](#static-ip-configuration)
-  - [Network Configuration Interface](#network-configuration-interface)
-- [Usage Instructions](#usage-instructions)
-- [Advanced Examples](#advanced-examples)
+  - [Memory Monitoring & Utility Functions](#memory-monitoring--utility-functions)
 - [Example Projects](#example-projects)
-- [Troubleshooting](#troubleshooting)
+  - [AP vs Station Mode](#ap-vs-station-mode)
+  - [Examples](#examples)
+- [Network Configuration](#network-configuration)
+  - [Advanced Network Features](#advanced-network-features)
+    - [Auto-Discovery](#auto-discovery)
+    - [Static IP Configuration](#static-ip-configuration)
+    - [Network Configuration Interface](#network-configuration-interface)
 - [License](#license)
-- [Contributing](#contributing)
-- [Support](#support)
 
 ## Features
 
@@ -45,15 +39,7 @@ A simple and powerful web-based GUI library for Arduino that enables you to crea
 - **Debounced Input**: Smart client-side debouncing prevents network flooding
 - **Status Monitoring**: Read-only displays for sensor data and system status
 - **Dual WiFi Modes**: Access Point mode for standalone operation or Station mode for existing networks
-- **Customizable Themes**: Built-in themes and custom CSS support
-- **Real-Time Updates**: Instant feedback between web interface and Arduino
-- **Cross-Platform**: Works on multiple Arduino boards with excellent performance
-- **Enhanced Toggle Controls**: New Toggle class for switch-like interactions
-- **Persistent Settings**: Automatic storage and retrieval of configuration settings across reboots
-- **Static IP Configuration**: Advanced network configuration with web-based IP address management
-- **TextBox Controls**: Input validation and network configuration through text input fields
-- **Device Management**: Built-in restart functionality with cross-platform compatibility
-- **Network Auto-Discovery**: Intelligent network range detection for seamless deployment
+
 
 ## Compatible Hardware
 
@@ -85,6 +71,10 @@ A simple and powerful web-based GUI library for Arduino that enables you to crea
 ```cpp
 #include <WebGUI.h>
 
+// *** WIFI CREDENTIALS - UPDATE THESE ***
+const char* WIFI_SSID = "YourWiFiName";       // Replace with your WiFi network name
+const char* WIFI_PASSWORD = "YourWiFiPassword"; // Replace with your WiFi password
+
 // Create a simple LED toggle control
 Toggle ledToggle("Built-in LED", 20, 50, 120);
 
@@ -95,8 +85,18 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
   
-  // Start WiFi Access Point
-  GUI.startAP("My-Arduino", "password123");
+  // Try to connect to existing WiFi network
+  Serial.println("Attempting to connect to WiFi...");
+  if (GUI.connectWiFi(WIFI_SSID, WIFI_PASSWORD)) {
+    Serial.println("Connected to WiFi network: " + String(WIFI_SSID));
+    Serial.println("Web interface: http://" + GUI.getIP());
+  } else {
+    // Fallback to Access Point mode if WiFi connection fails
+    Serial.println("WiFi connection failed - starting backup Access Point");
+    GUI.startAP("LED-Controller", "password123");
+    Serial.println("Connect to WiFi: LED-Controller");
+    Serial.println("Web interface: http://192.168.4.1");
+  }
   
   // Configure interface
   GUI.setTitle("LED Controller");
@@ -107,8 +107,7 @@ void setup() {
   // Start web server
   GUI.begin();
   
-  Serial.println("Connect to WiFi: My-Arduino");
-  Serial.println("Web interface: http://" + GUI.getIP());
+  Serial.println("LED Controller ready!");
 }
 
 void loop() {
@@ -140,14 +139,15 @@ void setup() {
 }
 ```
 
-**connectWiFi(ssid, password)** - Connect to existing WiFi
+**connectWiFi(ssid, password)** - Connect to existing WiFi (returns bool)
 ```cpp
 void setup() {
   // Connect to your home/office WiFi
   if (GUI.connectWiFi("HomeWiFi", "wifipass")) {
     Serial.println("Connected! IP: " + GUI.getIP());
   } else {
-    Serial.println("Connection failed");
+    Serial.println("Connection failed - falling back to AP mode");
+    GUI.startAP("Backup-Network", "password123");
   }
 }
 ```
@@ -167,6 +167,26 @@ void setup() {
   GUI.connectWiFi("HomeWiFi", "wifipass");
   Serial.println("Static IP: " + GUI.getIP());
   // Will print: "Static IP: 192.168.1.100"
+}
+```
+
+**connectWiFiWithStaticIP(ssid, password, ip, subnet, gateway)** - Advanced static IP configuration
+```cpp
+void setup() {
+  // One-step static IP connection with auto-discovery
+  bool connected = GUI.connectWiFiWithStaticIP(
+    "HomeWiFi", "wifipass",
+    "192.168.1.100",    // Static IP
+    "255.255.255.0",    // Subnet mask  
+    "192.168.1.1"       // Gateway
+  );
+  
+  if (connected) {
+    Serial.println("Connected with static IP: " + GUI.getIP());
+  } else {
+    Serial.println("Static IP connection failed");
+    GUI.startAP("Backup-Network", "password123");
+  }
 }
 ```
 
@@ -226,6 +246,21 @@ void setup() {
 void setup() {
   GUI.begin();
   Serial.println("Access at: http://" + GUI.getIP());
+}
+```
+
+**restartDevice()** - Cross-platform device restart
+```cpp
+Button restartBtn("Restart", 20, 50);
+
+void loop() {
+  GUI.update();
+  
+  if (restartBtn.wasPressed()) {
+    Serial.println("Restarting device...");
+    delay(1000);  // Allow time for response
+    GUI.restartDevice();  // Cross-platform restart
+  }
 }
 ```
 
@@ -713,181 +748,22 @@ void updateNetworkDisplay() {
 }
 ```
 
-## Persistent Settings
 
-The WebGUI library includes built-in persistent storage for configuration data that survives power cycles and device restarts.
+### Memory Monitoring & Utility Functions
 
-### Initialize Settings System
-```cpp
-void setup() {
-  // Always call this before using settings
-  GUI.initSettings();
-  
-  // Now you can save and load settings
-}
-```
+#### Built-in Memory Functions
+The library includes cross-platform utility functions for memory management:
 
-### Save Settings
-```cpp
-// Save different data types
-GUI.saveSetting("device_name", "My Arduino");           // String
-GUI.saveSetting("update_interval", 1000);               // Integer
-GUI.saveSetting("temperature_offset", 2.5);             // Float
-GUI.saveSetting("debug_mode", true);                    // Boolean
-
-// Network configuration
-GUI.saveSetting("custom_ip", "192.168.1.100");
-GUI.saveSetting("custom_subnet", "255.255.255.0");
-GUI.saveSetting("custom_gateway", "192.168.1.1");
-```
-
-### Load Settings
-```cpp
-void setup() {
-  GUI.initSettings();
-  
-  // Load settings with automatic type detection
-  String deviceName = GUI.loadStringSetting("device_name");
-  int interval = GUI.loadIntSetting("update_interval");
-  float offset = GUI.loadFloatSetting("temperature_offset");
-  bool debugMode = GUI.loadBoolSetting("debug_mode");
-  
-  // Use default values if setting doesn't exist
-  if (deviceName.length() == 0) {
-    deviceName = "Default-Arduino";
-  }
-  
-  Serial.println("Device: " + deviceName);
-  Serial.println("Interval: " + String(interval) + "ms");
-}
-```
-
-### Complete Settings Example
+**getFreeRAM()** - Get available memory
 ```cpp
 #include <WebGUI.h>
-
-TextBox deviceNameBox("Device Name", 20, 50, 200, "Arduino-01");
-Button saveButton("Save Configuration", 20, 100, 150, 40);
-SensorStatus savedStatus("Last Saved", 20, 150, 300);
-
-void setup() {
-  Serial.begin(115200);
-  GUI.initSettings();
-  
-  // Load saved device name
-  String savedName = GUI.loadStringSetting("device_name");
-  if (savedName.length() > 0) {
-    deviceNameBox.setValue(savedName);
-    savedStatus.setValue("Loaded: " + savedName);
-  }
-  
-  GUI.startAP("ConfigDevice", "password");
-  GUI.addElement(&deviceNameBox);
-  GUI.addElement(&saveButton);
-  GUI.addElement(&savedStatus);
-  GUI.begin();
-}
-
-void loop() {
-  GUI.update();
-  
-  if (saveButton.wasPressed()) {
-    String newName = deviceNameBox.getValue();
-    GUI.saveSetting("device_name", newName.c_str());
-    savedStatus.setValue("Saved: " + newName);
-    Serial.println("Configuration saved: " + newName);
-  }
-}
-```
-
-## Device Management
-
-### Restart Device
-The library provides cross-platform device restart functionality:
-
-```cpp
-#include <WebGUI.h>
-
-Button restartButton("Restart Device", 20, 50, 150, 40);
-
-void setup() {
-  GUI.startAP("MyDevice", "password");
-  GUI.addElement(&restartButton);
-  GUI.begin();
-}
-
-void loop() {
-  GUI.update();
-  
-  if (restartButton.wasPressed()) {
-    Serial.println("Restarting device...");
-    delay(1000);  // Give time for message to be sent
-    
-    // Cross-platform restart
-    GUI.restartDevice();
-    // Device will restart and reconnect
-  }
-}
-```
-
-The `restartDevice()` method automatically detects the platform and uses the appropriate restart mechanism:
-- **ESP32**: `ESP.restart()`
-- **Arduino UNO R4 WiFi**: `NVIC_SystemReset()`  
-- **Arduino Nano 33 IoT**: `NVIC_SystemReset()`
-- **Other platforms**: Safe halt with infinite loop
-
-## Styling and Themes
-
-### Built-in Themes
-The WebGUI library uses a single optimized theme designed for readability and performance across all devices.
-
-### Custom CSS
-```cpp
-GUI.setCustomCSS(
-  ".webgui-button { "
-  "  background: linear-gradient(145deg, #ff6b6b, #ee5a52); "
-  "  border-radius: 20px; "
-  "}"
-);
-```
-
-## Memory Optimization & Performance
-
-### Memory Efficiency Features
-The WebGUI library is optimized for memory-constrained devices like Arduino UNO R4 WiFi:
-
-- **Streaming HTML Generation**: Prevents memory crashes by sending HTML in chunks
-- **Minimal CSS Footprint**: ~400 bytes vs typical 9KB+ CSS frameworks  
-- **Dynamic Memory Management**: Elements only consume memory when actively used
-- **Optimized String Handling**: Reduces heap fragmentation
-
-### Performance Benchmarks
-**Arduino UNO R4 WiFi (32KB RAM):**
-- **4 Elements**: Original stable limit  
-- **8 Elements**: Proven with optimization (2x improvement)
-- **Memory Usage**: ~16.8% RAM usage with 8 elements
-- **Response Time**: <100ms for control updates
-
-### Memory Monitoring
-```cpp
-// Cross-platform memory monitoring
-int getFreeRAM() {
-#ifdef ARDUINO_UNOR4_WIFI
-  char dummy;
-  return (int)&dummy - 0x20000000;
-#else
-  extern int __heap_start, *__brkval;
-  int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-#endif
-}
 
 SensorStatus memoryStatus("Free RAM");
 
 void loop() {
   GUI.update();
   
-  // Monitor memory usage
+  // Built-in cross-platform memory monitoring
   memoryStatus.setValue(String(getFreeRAM()) + " bytes");
   
   // Memory warning
@@ -897,108 +773,107 @@ void loop() {
 }
 ```
 
-### Best Practices for Performance
-1. **Call GUI.update() once per loop**: Avoid multiple calls
-2. **Use appropriate delays**: `delay(10)` recommended for responsive UI
-3. **Monitor memory usage**: Especially when adding many elements
-4. **Batch status updates**: Update displays every 1-2 seconds, not every loop
-5. **Use appropriate data types**: `int` for simple values, `String` only when needed
+**clearMemory()** - Force garbage collection (ESP32 only)
+```cpp
+void loop() {
+  GUI.update();
+  
+  // Periodic memory cleanup for ESP32
+  static unsigned long lastCleanup = 0;
+  if (millis() - lastCleanup > 30000) {  // Every 30 seconds
+    clearMemory();
+    lastCleanup = millis();
+    Serial.println("Memory cleaned, Free RAM: " + String(getFreeRAM()));
+  }
+}
+```
 
-## Layout Guidelines
+The `getFreeRAM()` function automatically detects the platform:
+- **ESP32**: `ESP.getFreeHeap()`
+- **Arduino UNO R4 WiFi**: Stack pointer calculation
+- **Arduino Nano 33 IoT**: Heap/stack differential
+- **Other platforms**: Standard heap monitoring
 
-### Button Positioning
-- Height: 30-40px recommended
-- Horizontal spacing: 20px minimum between buttons
-- Example: `Button("Btn1", 20, 50)`, `Button("Btn2", 140, 50)`
+## Example Projects
 
-### Slider Positioning  
-- Height: ~60px total (includes label and padding)
-- Vertical spacing: 70px recommended between sliders
-- Example: `Slider("S1", 20, 100, ...)`, `Slider("S2", 20, 170, ...)`
+### AP vs Station Mode
 
-### SensorStatus Layout
-- Automatically positioned in order added
-- No manual positioning required
-- Displays as label: value pairs
-- Perfect for monitoring sensor data without Serial output
+**Access Point (AP) Mode** creates a standalone WiFi network that other devices can connect to. Think of your Arduino as becoming its own WiFi router. This is perfect for portable projects, demonstrations, or situations where you don't have existing WiFi. Your phone or computer connects directly to the Arduino's network (like "My-Arduino") and you access the web interface at a fixed address like 192.168.4.1.
+
+**Station Mode** connects your Arduino to an existing WiFi network (like your home WiFi). Your Arduino becomes another device on your network, just like your phone or laptop. This is ideal for permanent installations and home automation because you can access your Arduino from anywhere on your network, and it gets an IP address from your router.
+
+### Examples
+
+#### Basic
+![Basic Example](images/Basic.jpg)
+
+Introduction to WebGUI with button and slider controls - perfect for learning the fundamentals.
+
+**Modes:** Available in Station Mode and AP Mode
+
+**API Components Used:**
+- [Button Class](#button-class) - Interactive button control
+- [Slider Class](#slider-class) - Continuous value control
+- [SensorStatus Class](#sensorstatus-class) - Read-only status displays
+
+#### ToggleAnLED
+![ToggleAnLED Example](images/ToggleAnLED.jpg)
+
+The simplest possible WebGUI example - just toggle the built-in LED on and off. Great for beginners.
+
+**Modes:** Available in Station Mode and AP Mode
+
+**API Components Used:**
+- [Toggle Class](#toggle-class) - Switch-like on/off control
+
+#### SwitchPanel
+![SwitchPanel Example](images/SwitchPanel.jpg)
+
+Multiple LED control using toggle switches for creating control panels and multi-device interfaces.
+
+**Modes:** Available in Station Mode and AP Mode
+
+**API Components Used:**
+- [Toggle Class](#toggle-class) - Multiple switch controls
+
+#### SensorDebug
+![SensorDebug Example](images/SensorDebug.jpg)
+
+Real-time sensor monitoring with web-based debug interface - ideal for development and troubleshooting.
+
+**Modes:** Available in Station Mode and AP Mode
+
+**API Components Used:**
+- [SensorStatus Class](#sensorstatus-class) - Read-only sensor displays
+- [Memory Monitoring Functions](#memory-monitoring--utility-functions) - getFreeRAM() for diagnostics
+
+#### SaveSettings
+![SaveSettings Example](images/SaveSettings.jpg)
+
+Persistent settings management with automatic value restoration on startup - essential for configuration interfaces.
+
+**Modes:** Available in Station Mode and AP Mode
+
+**API Components Used:**
+- [Slider Class](#slider-class) - Configuration value controls
+- [Button Class](#button-class) - Save settings action
+- [SensorStatus Class](#sensorstatus-class) - Status feedback
+- [Persistent Settings Management](#persistent-settings-management) - Save/load configuration data
+
+#### SetIPAddress
+![SetIPAddress Example](images/SetIPAddress.jpg)
+
+Web-based network configuration interface with persistent settings and input validation - professional network management.
+
+**Modes:** Available in Station Mode only
+
+**API Components Used:**
+- [TextBox Class](#textbox-class) - IP address input fields with validation
+- [Button Class](#button-class) - Apply/Reset/Restart actions
+- [SensorStatus Class](#sensorstatus-class) - Network status displays
+- [Persistent Settings Management](#persistent-settings-management) - Network configuration storage
 
 ## Network Configuration
-
-### Access Point Mode (Standalone Operation)
-
-**When to use:** Portable projects, demonstrations, areas without WiFi, temporary setups
-
-```cpp
-void setup() {
-  GUI.startAP("MyDevice", "mypassword");
-  // Creates network: "MyDevice" with password "mypassword"
-  // Device accessible at: 192.168.4.1
-}
-```
-
-**Benefits:**
-- Works anywhere - no existing WiFi required
-- Perfect for portable/mobile projects  
-- Direct device-to-phone connection
-- Consistent IP address (192.168.4.1)
-- No network configuration needed
-
-**Limitations:**
-- No internet access while connected
-- Only one client can connect at a time (typically)
-- Must switch WiFi networks on control device
-
-### Station Mode (Connect to Existing WiFi)
-
-**When to use:** Home automation, permanent installations, internet-connected projects
-
-```cpp
-void setup() {
-  if (GUI.connectWiFi("YourWiFi", "wifipassword")) {
-    Serial.println("Connected! IP: " + GUI.getIP());
-  } else {
-    Serial.println("Failed to connect");
-    // Optional: Fallback to AP mode
-    GUI.startAP("Backup-Mode", "backup123");
-  }
-}
-```
-
-**Benefits:**
-- Internet access maintained
-- Multiple devices can access simultaneously
-- Integration with home/office network
-- Can access from anywhere on network
-- Better for permanent installations
-
-**Limitations:**
-- Requires existing WiFi network
-- IP address may change (use DHCP reservation)
-- Network dependency (fails if WiFi down)
-
-### Hybrid Approach (Recommended for Production)
-
-```cpp
-void setup() {
-  Serial.begin(115200);
-  
-  // Try to connect to home WiFi first
-  Serial.println("Attempting WiFi connection...");
-  if (GUI.connectWiFi("HomeWiFi", "password")) {
-    Serial.println("Connected to home network");
-    Serial.println("Web interface: http://" + GUI.getIP());
-  } else {
-    // Fallback to Access Point mode
-    Serial.println("WiFi failed, starting backup AP...");
-    GUI.startAP("Device-Setup", "setup123");
-    Serial.println("Setup mode: Connect to 'Device-Setup'");
-    Serial.println("Web interface: http://192.168.4.1");
-  }
-  
-  // Continue with setup...
-  GUI.begin();
-}
-```
 
 ### Network Troubleshooting
 
@@ -1029,20 +904,20 @@ void loop() {
 }
 ```
 
-## Advanced Network Features
+### Advanced Network Features
 
-### Auto-Discovery
+#### Auto-Discovery
 
 The WebGUI library includes intelligent network auto-discovery capabilities that automatically detect and configure network settings. This feature is particularly useful for devices that need to work across different network environments without manual configuration.
 
-#### How Auto-Discovery Works
+##### How Auto-Discovery Works
 
 1. **DHCP Discovery**: Connects via DHCP to discover the current network configuration
 2. **Network Analysis**: Determines the network range, gateway, and subnet mask
 3. **Static IP Assignment**: Calculates and assigns an appropriate static IP address
 4. **Seamless Connection**: Switches to static IP configuration for reliable operation
 
-#### Basic Auto-Discovery Usage
+##### Basic Auto-Discovery Usage
 
 ```cpp
 #include <WebGUI.h>
@@ -1065,7 +940,7 @@ void setup() {
 }
 ```
 
-#### Smart Connection Sequence
+##### Smart Connection Sequence
 
 For maximum reliability, combine saved settings with auto-discovery fallback:
 
@@ -1108,22 +983,7 @@ void setup() {
 }
 ```
 
-#### Auto-Discovery Benefits
-
-- **Cross-Network Compatibility**: Works on different network ranges (192.168.1.x, 10.0.0.x, etc.)
-- **Zero Configuration**: No manual IP setup required
-- **Intelligent Fallback**: Gracefully handles network changes
-- **Static IP Reliability**: Provides consistent IP addresses for device access
-- **Enterprise Ready**: Handles complex network topologies
-
-#### Supported Network Types
-
-- **Home Networks**: 192.168.1.x, 192.168.0.x ranges
-- **Corporate Networks**: 10.0.0.x, 172.16.x.x ranges  
-- **Hotspot Networks**: 192.168.137.x (Windows), 172.20.x.x (iOS)
-- **Custom Subnets**: Any /24 or /16 network configuration
-
-### Static IP Configuration
+#### Static IP Configuration
 
 For environments requiring specific IP addresses, use the static IP configuration methods:
 
@@ -1144,7 +1004,7 @@ if (connected) {
 }
 ```
 
-#### IP Configuration Helpers
+##### IP Configuration Helpers
 
 ```cpp
 // Get current network information
@@ -1161,7 +1021,7 @@ GUI.saveSetting("device_gateway", "192.168.1.1");
 String saved_ip = GUI.loadStringSetting("device_ip");
 ```
 
-#### Network Validation
+##### Network Validation
 
 The library includes built-in validation for network configurations:
 
@@ -1173,11 +1033,11 @@ The library includes built-in validation for network configurations:
 // - Network address consistency
 ```
 
-### Network Configuration Interface
+#### Network Configuration Interface
 
 The WebGUI library includes a complete web-based network configuration interface that allows users to set static IP addresses through a user-friendly web form. This is demonstrated in the `Station_SetIPAddress` example.
 
-#### Features
+##### Features
 
 - **Web-Based IP Configuration**: Set IP address, subnet mask, and gateway through text input fields
 - **Persistent Storage**: Network settings are automatically saved and restored across restarts
@@ -1185,7 +1045,7 @@ The WebGUI library includes a complete web-based network configuration interface
 - **Apply/Reset/Restart**: Complete workflow for network configuration changes
 - **Visual Feedback**: Status displays show current and saved network configurations
 
-#### Basic Network Configuration Interface
+##### Basic Network Configuration Interface
 
 ```cpp
 #include <WebGUI.h>
@@ -1302,579 +1162,8 @@ void loop() {
 }
 ```
 
-#### Complete Example: Station_SetIPAddress
-
-The library includes a complete example (`Station_SetIPAddress.ino`) that demonstrates:
-
-- Loading saved network configuration on startup
-- Web-based form for IP address configuration  
-- Real-time input validation and error handling
-- Persistent storage of network settings
-- Device restart functionality
-- Visual status feedback
-
-**Location**: `examples/StationMode/Station_SetIPAddress/Station_SetIPAddress.ino`
-
-**Features**:
-- Remembers network settings across power cycles
-- Validates IP addresses and network consistency
-- Provides clear status messages and error handling
-- Supports cross-platform device restart
-- Clean, professional web interface
-
-## Usage Instructions
-
-1. **Upload your sketch** to the Arduino
-2. **Connect to WiFi network** created by Arduino (or your home WiFi if using station mode)
-3. **Open web browser** and navigate to the IP address shown in Serial Monitor
-4. **Control your project** using the web interface!
-
-## Advanced Examples
-
-## Advanced Examples
-
-### Multi-Control Smart Home System
-```cpp
-#include <WebGUI.h>
-
-// Control elements  
-Button powerBtn("System Power", 20, 50);
-Button resetBtn("Reset", 140, 50);
-Toggle livingRoomLight("Living Room", 20, 100, 100);
-Toggle kitchenLight("Kitchen", 140, 100, 100);
-Toggle fanControl("Ceiling Fan", 260, 100, 100);
-Slider brightness("Brightness %", 20, 150, 0, 100, 75);
-Slider fanSpeed("Fan Speed", 20, 220, 0, 255, 100);
-
-// Status displays
-SensorStatus temperature("Temperature");
-SensorStatus humidity("Humidity");
-SensorStatus systemUptime("Uptime");
-SensorStatus memoryFree("Free RAM");
-SensorStatus wifiSignal("WiFi Signal");
-
-void setup() {
-  Serial.begin(115200);
-  
-  // Configure pins
-  pinMode(2, OUTPUT);  // Living room LED
-  pinMode(3, OUTPUT);  // Kitchen LED  
-  pinMode(9, OUTPUT);  // Fan control
-  pinMode(6, OUTPUT);  // Brightness PWM
-  
-  // Network setup with fallback
-  if (GUI.connectWiFi("HomeWiFi", "password")) {
-    Serial.println("Connected to home network");
-  } else {
-    GUI.startAP("SmartHome-Setup", "setup123");
-    Serial.println("Setup mode active");
-  }
-  
-  // Interface configuration
-  GUI.setTitle("Smart Home Control");
-  
-  // Add all elements
-  GUI.addElement(&powerBtn);
-  GUI.addElement(&resetBtn);
-  GUI.addElement(&livingRoomLight);
-  GUI.addElement(&kitchenLight);
-  GUI.addElement(&fanControl);
-  GUI.addElement(&brightness);
-  GUI.addElement(&fanSpeed);
-  GUI.addElement(&temperature);
-  GUI.addElement(&humidity);
-  GUI.addElement(&systemUptime);
-  GUI.addElement(&memoryFree);
-  GUI.addElement(&wifiSignal);
-  
-  GUI.begin();
-  Serial.println("Smart Home System Ready!");
-  Serial.println("Access: http://" + GUI.getIP());
-}
-
-bool systemPowered = true;
-
-void loop() {
-  GUI.update();
-  
-  // System power control
-  if (powerBtn.wasPressed()) {
-    systemPowered = !systemPowered;
-    if (!systemPowered) {
-      // Turn off all devices
-      digitalWrite(2, LOW);
-      digitalWrite(3, LOW);
-      digitalWrite(9, LOW);
-      analogWrite(6, 0);
-    }
-    Serial.println("System: " + String(systemPowered ? "ON" : "OFF"));
-  }
-  
-  // Reset button
-  if (resetBtn.wasPressed()) {
-    Serial.println("System reset requested");
-    // Reset all controls to default states
-    livingRoomLight.setToggleState(false);
-    kitchenLight.setToggleState(false);
-    fanControl.setToggleState(false);
-    brightness.setValue(75);
-    fanSpeed.setValue(100);
-  }
-  
-  if (systemPowered) {
-    // Light controls
-    if (livingRoomLight.wasToggled()) {
-      digitalWrite(2, livingRoomLight.isOn());
-    }
-    
-    if (kitchenLight.wasToggled()) {
-      digitalWrite(3, kitchenLight.isOn());
-    }
-    
-    // Fan control
-    if (fanControl.wasToggled()) {
-      if (fanControl.isOn()) {
-        analogWrite(9, fanSpeed.getIntValue());
-      } else {
-        analogWrite(9, 0);
-      }
-    }
-    
-    // Brightness control
-    int brightnessValue = map(brightness.getIntValue(), 0, 100, 0, 255);
-    analogWrite(6, brightnessValue);
-    
-    // Fan speed update
-    if (fanControl.isOn()) {
-      analogWrite(9, fanSpeed.getIntValue());
-    }
-  }
-  
-  // Update status displays every 2 seconds
-  static unsigned long lastUpdate = 0;
-  if (millis() - lastUpdate > 2000) {
-    // Simulate sensor readings
-    temperature.setValue("22.5°C");
-    humidity.setValue("45%");
-    systemUptime.setValue(String(millis() / 60000) + " min");
-    
-    // Real system stats
-    memoryFree.setValue(String(getFreeRAM()) + " bytes");
-    wifiSignal.setValue(String(WiFi.RSSI()) + " dBm");
-    
-    lastUpdate = millis();
-  }
-}
-
-// Memory monitoring function
-int getFreeRAM() {
-#ifdef ARDUINO_UNOR4_WIFI
-  char dummy;
-  return (int)&dummy - 0x20000000;
-#else
-  extern int __heap_start, *__brkval;
-  int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-#endif
-}
-```
-
-### Servo Control System with Position Feedback
-```cpp
-#include <WebGUI.h>
-#include <Servo.h>
-
-Servo myServo;
-
-// Controls
-Slider positionSlider("Target Position", 20, 50, 0, 180, 90);
-Button homeBtn("Home Position", 20, 120);
-Button sweepBtn("Auto Sweep", 140, 120);
-Toggle enableToggle("Servo Enable", 260, 120, 100);
-
-// Status displays
-SensorStatus currentPosition("Current Angle");
-SensorStatus servoStatus("Servo Status");
-SensorStatus targetReached("Target Reached");
-
-int currentPos = 90;
-int targetPos = 90;
-bool sweepMode = false;
-int sweepDirection = 1;
-
-void setup() {
-  Serial.begin(115200);
-  
-  myServo.attach(9);
-  myServo.write(90);  // Start at center
-  
-  GUI.connectWiFi("YourWiFi", "password");
-  GUI.setTitle("Servo Controller");
-  
-  GUI.addElement(&positionSlider);
-  GUI.addElement(&homeBtn);
-  GUI.addElement(&sweepBtn);
-  GUI.addElement(&enableToggle);
-  GUI.addElement(&currentPosition);
-  GUI.addElement(&servoStatus);
-  GUI.addElement(&targetReached);
-  
-  enableToggle.setToggleState(true);  // Start enabled
-  
-  GUI.begin();
-  Serial.println("Servo Control: http://" + GUI.getIP());
-}
-
-void loop() {
-  GUI.update();
-  
-  // Servo enable/disable
-  if (enableToggle.wasToggled()) {
-    if (enableToggle.isOn()) {
-      myServo.attach(9);
-      servoStatus.setValue("Enabled");
-    } else {
-      myServo.detach();
-      servoStatus.setValue("Disabled");
-      sweepMode = false;
-    }
-  }
-  
-  if (enableToggle.isOn()) {
-    // Home position
-    if (homeBtn.wasPressed()) {
-      targetPos = 90;
-      positionSlider.setValue(90);
-      sweepMode = false;
-      Serial.println("Homing servo...");
-    }
-    
-    // Sweep mode toggle
-    if (sweepBtn.wasPressed()) {
-      sweepMode = !sweepMode;
-      Serial.println("Sweep mode: " + String(sweepMode ? "ON" : "OFF"));
-    }
-    
-    // Position control
-    if (!sweepMode) {
-      targetPos = positionSlider.getIntValue();
-    } else {
-      // Auto sweep logic
-      static unsigned long lastSweepUpdate = 0;
-      if (millis() - lastSweepUpdate > 20) {
-        targetPos += sweepDirection;
-        if (targetPos >= 180 || targetPos <= 0) {
-          sweepDirection *= -1;
-        }
-        positionSlider.setValue(targetPos);
-        lastSweepUpdate = millis();
-      }
-    }
-    
-    // Smooth servo movement
-    if (currentPos != targetPos) {
-      if (currentPos < targetPos) {
-        currentPos++;
-      } else {
-        currentPos--;
-      }
-      myServo.write(currentPos);
-      delay(15);  // Smooth movement
-    }
-  }
-  
-  // Update status displays
-  currentPosition.setValue(String(currentPos) + "°");
-  targetReached.setValue(currentPos == targetPos);
-}
-
-### Custom Styling
-```cpp
-void setup() {
-  GUI.setCustomCSS(
-    "body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }"
-    ".webgui-button { box-shadow: 0 8px 16px rgba(0,0,0,0.3); }"
-    ".webgui-slider { accent-color: #ff6b6b; }"
-    ".webgui-status { background: #f8f9fa; border-left: 4px solid #007bff; }"
-  );
-}
-```
-
-### Debouncing Performance
-The library automatically implements client-side debouncing for sliders to prevent network flooding:
-- Default debounce delay: 100ms
-- Prevents rapid network requests during slider dragging
-- Maintains responsive UI while protecting Arduino from overload
-- No additional configuration required
-```
-
-## Troubleshooting
-
-## Troubleshooting
-
-### Common Issues
-
-**Can't connect to WiFi network**
-- Check SSID and password in Serial Monitor output
-- Verify WiFi credentials are correct (case-sensitive)
-- Ensure device is in range of WiFi router
-- Try restarting Arduino if network doesn't appear
-- For Station mode: Use hybrid approach with AP fallback
-
-**Web page doesn't load**
-- Verify IP address in Serial Monitor
-- Check that you're connected to Arduino's WiFi network (AP mode)
-- Try accessing `192.168.4.1` (default AP IP)
-- For Station mode: Ensure you're on the same network
-- Clear browser cache and try incognito/private mode
-
-**Controls don't respond**
-- Ensure `GUI.update()` is called in `loop()` function
-- Check Serial Monitor for error messages
-- Verify control positioning doesn't overlap other elements
-- Check if `GUI.begin()` was called after adding all elements
-
-**Memory issues / Crashes**
-- Monitor memory usage with `getFreeRAM()` function
-- Reduce number of GUI elements if memory is low
-- Use optimized examples (Station_* versions) for better performance
-- Avoid frequent String operations in main loop
-- Consider using `SensorStatus` instead of Serial.print for debugging
-
-**Slider performance issues**
-- Library includes automatic debouncing (no action needed)
-- If experiencing lag, check for Serial.print() in tight loops
-- Reduce update frequency for non-critical status displays
-- Use `delay(10)` in main loop for responsive UI
-
-**SensorStatus not updating**
-- Ensure you're calling `setValue()` with current data
-- Check that `GUI.update()` is being called regularly
-- Verify the status display was added with `GUI.addElement()`
-- Update displays every 1-2 seconds, not every loop iteration
-
-**Toggle switches not working**
-- Use `wasToggled()` to detect state changes
-- Use `isOn()` to check current state
-- Ensure toggle was added to GUI with `GUI.addElement()`
-- Check that WiFi connection is stable
-
-### Performance Optimization
-
-**For Arduino UNO R4 WiFi:**
-- Maximum recommended elements: 8 (proven stable)
-- Update status displays every 2-3 seconds maximum
-- Use appropriate variable types (int vs String)
-- Monitor free RAM regularly
-
-**Network Optimization:**
-- Use Station mode for permanent installations
-- Use AP mode for portable/demonstration projects
-- Implement connection monitoring for critical applications
-- Consider hybrid mode for production systems
-
-### Debug Techniques
-
-**Memory Debugging:**
-```cpp
-void printMemoryStatus() {
-  Serial.println("Free RAM: " + String(getFreeRAM()) + " bytes");
-  if (getFreeRAM() < 2000) {
-    Serial.println("Memory getting low!");
-  }
-}
-```
-
-**Network Debugging:**
-```cpp
-void checkWiFiStatus() {
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("WiFi connected: " + WiFi.localIP().toString());
-  } else {
-    Serial.println("WiFi disconnected");
-  }
-}
-```
-
-**Element Debugging:**
-```cpp
-// Use SensorStatus for real-time debugging without Serial
-SensorStatus debugInfo("Debug");
-
-void loop() {
-  GUI.update();
-  
-  debugInfo.setValue("Button presses: " + String(buttonCount));
-  // Better than Serial.println for web-accessible debugging
-}
-```
-
-## Example Projects
-
-The library includes comprehensive examples for both Access Point and Station Mode operation:
-
-### Access Point Mode Examples
-
-#### AP_Basic.ino
-**Description**: Introduction to WebGUI with standalone WiFi network creation.
-- **Features**: Basic button and slider, LED control, Access Point setup
-- **Best for**: Learning the basics, portable projects, demonstrations  
-- **Hardware**: LED on pin 2, Arduino UNO R4 WiFi or compatible
-- **Network**: Creates "Arduino-WebGUI" network, accessible at 192.168.4.1
-
-#### AP_ToggleAnLED.ino
-**Description**: The simplest possible WebGUI example - just toggle the built-in LED on and off.
-- **Features**: Single LED toggle control for built-in LED, minimal code example
-- **Best for**: Learning the basics, first WebGUI project, no external components
-- **Hardware**: Built-in LED only (no additional components needed)
-- **Network**: Creates "My-Arduino" network, accessible at 192.168.4.1
-
-#### AP_BlinkAnLED.ino
-**Description**: LED blink control with toggle enable/disable and adjustable blink rate.
-- **Features**: Toggle to enable/disable blinking, slider for blink rate control, millis-based timing
-- **Best for**: Learning timing control, non-blocking LED patterns, rate adjustment
-- **Hardware**: Built-in LED only (no additional components needed)
-- **Network**: Creates "Arduino-BlinkLED" network for standalone blink control
-
-#### AP_SwitchPanel.ino
-**Description**: Multiple LED control using toggle switches in Access Point mode.
-- **Features**: 4 LED toggle controls, individual LED management, real-time status
-- **Best for**: Multi-device control, switch-like interfaces, panel control systems
-- **Hardware**: LEDs on pins 2-5 with 220Ω resistors
-- **Network**: Standalone operation, no external WiFi required
-
-#### AP_SensorDebug.ino  
-**Description**: Real-time sensor monitoring with web-based debug interface.
-- **Features**: Potentiometer reading, temperature simulation, debug status displays
-- **Best for**: Sensor development, debugging without Serial Monitor
-- **Hardware**: Potentiometer on A0, optional temperature sensor
-- **Network**: Access Point mode for field testing
-
-#### AP_ServoTest.ino
-**Description**: Servo motor control with angle adjustment and position feedback.
-- **Features**: Servo position control, angle slider, position monitoring
-- **Best for**: Robotics projects, mechanical control systems
-- **Hardware**: Servo motor on pin 9, external power recommended
-- **Network**: Portable servo control without WiFi dependency
-
-#### AP_SaveSettings.ino
-**Description**: Persistent settings management with automatic value restoration on startup.
-- **Features**: Two sliders with persistent storage, save button, visual feedback, automatic restoration
-- **Best for**: Configuration interfaces, persistent parameter storage, settings panels
-- **Hardware**: No external components needed
-- **Network**: Creates "Settings-Controller" network, standalone operation
-- **Special**: Values survive power cycles and are restored automatically
-
-### Station Mode Examples
-
-#### Station_Basic.ino
-**Description**: Connect to existing WiFi network for integrated home automation.
-- **Features**: Home network integration, button and slider controls
-- **Best for**: Permanent installations, home automation integration
-- **Hardware**: LED on pin 2, Arduino UNO R4 WiFi or compatible  
-- **Network**: Connects to your home WiFi, accessible from any network device
-
-#### Station_ToggleAnLED.ino
-**Description**: The simplest possible WebGUI example integrated with your home network.
-- **Features**: Single LED toggle for built-in LED, home network integration
-- **Best for**: Learning WiFi integration, first network-connected project
-- **Hardware**: Built-in LED only (no additional components needed)
-- **Network**: Connects to your home WiFi, accessible from any network device
-
-#### Station_BlinkAnLED.ino
-**Description**: Network-integrated LED blink control with rate adjustment.
-- **Features**: Toggle enable/disable, slider rate control, home network access
-- **Best for**: Remote LED control, learning network timing patterns
-- **Hardware**: Built-in LED only (no additional components needed)
-- **Network**: Home WiFi integration for remote blink control
-
-#### Station_SwitchPanel.ino
-**Description**: Multi-LED control integrated with home network.
-- **Features**: 4 LED toggles, network integration, remote access capability
-- **Best for**: Room lighting control, permanent LED installations, switch panels
-- **Hardware**: LEDs on pins 2-5 with 220Ω resistors
-- **Network**: Home WiFi integration, multiple device access
-
-#### Station_SensorDebug.ino
-**Description**: Network-integrated sensor monitoring for permanent installations.
-- **Features**: Continuous sensor monitoring, network status, remote debugging
-- **Best for**: Permanent sensor installations, remote monitoring
-- **Hardware**: Potentiometer on A0, optional sensors
-- **Network**: Home WiFi integration, remote access from anywhere on network
-
-#### Station_SetIPAddress.ino
-**Description**: Web-based network configuration interface with persistent settings.
-- **Features**: IP address configuration via web form, persistent storage, input validation, device restart
-- **Best for**: Network configuration, professional installations, dynamic IP management
-- **Hardware**: No external components needed
-- **Network**: Configurable static IP with web-based management interface
-- **Special**: 
-  - Complete network configuration through web interface
-  - Settings persist across power cycles and restarts
-  - Real-time input validation and error handling
-  - Apply/Reset/Restart workflow for configuration changes
-  - Professional-grade network management interface
-- **Best for**: Long-term monitoring, data collection, remote diagnostics
-- **Hardware**: Potentiometer on A0, temperature sensor (optional)
-- **Network**: Home network integration for remote monitoring
-
-#### Station_ServoTest.ino
-**Description**: Network-controlled servo system for automation projects.
-- **Features**: Remote servo control, position feedback, network status monitoring
-- **Best for**: Home automation, remote mechanical control, security systems
-- **Hardware**: Servo motor on pin 9, external power supply recommended
-- **Network**: Home WiFi for remote servo control
-
-#### Station_SaveSettings.ino
-**Description**: Persistent settings management integrated with home network.
-- **Features**: Two sliders with persistent storage, save button, visual feedback, automatic restoration, network integration
-- **Best for**: Permanent device configuration, network-accessible settings panels, home automation parameters
-- **Hardware**: No external components needed
-- **Network**: Connects to your home WiFi, accessible from any network device
-- **Special**: Values survive power cycles and are restored automatically, supports remote configuration
-
-### Advanced Test Example
-
-#### 8-LED Toggle Test (main.cpp in WebGUI-Dev)
-**Description**: Stress test demonstrating optimized library capabilities.
-- **Features**: 8 LED toggles, memory optimization validation, performance monitoring
-- **Best for**: Testing library limits, demonstrating optimization improvements
-- **Hardware**: LEDs on pins 2-9 with 220Ω resistors  
-- **Performance**: Proves library can handle 2x original element limit
-- **Network**: Station mode with comprehensive status monitoring
-
-### Usage Instructions for Examples
-
-1. **Choose your mode**: Access Point for portable/standalone or Station for home integration
-2. **Select example**: Start with ToggleAnLED, then try BlinkAnLED, SwitchPanel, SensorDebug, or ServoTest
-3. **Configure network**: Update WiFi credentials in Station mode examples
-4. **Upload sketch**: Use Arduino IDE or PlatformIO
-5. **Connect**: Access Point (192.168.4.1) or check Serial Monitor for Station IP
-6. **Control**: Open web browser and interact with your project
-
-### Progression Path
-```
-Beginner:     AP_ToggleAnLED → AP_BlinkAnLED → AP_SwitchPanel
-Intermediate: Station_ToggleAnLED → Station_BlinkAnLED → Station_SensorDebug  
-Advanced:     Station_ServoTest → 8-LED Test
-```
-
-Each example includes detailed comments and can serve as a starting point for your own projects. The Access Point examples work immediately without network setup, while Station examples provide better integration for permanent installations.
-
 ## License
 
 This library is released under the GNU Lesser General Public License v2.1. See [LICENSE](LICENSE) for details.
 
-## Contributing
 
-Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
-
-## Support
-
-- **Documentation**: [GitHub Wiki](https://github.com/npuckett/WebGUI/wiki)
-- **Issues**: [GitHub Issues](https://github.com/npuckett/WebGUI/issues)
-- **Examples**: See `examples/` folder in library
-
----
-
-**Made with care for the Arduino community**

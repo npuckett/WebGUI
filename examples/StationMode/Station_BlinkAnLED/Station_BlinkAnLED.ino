@@ -64,10 +64,15 @@ void setup() {
   
   // Connect to existing WiFi network
   Serial.println("Connecting to WiFi...");
-  GUI.connectWiFi(WIFI_SSID, WIFI_PASSWORD);
-  
-  Serial.println("Connected to WiFi: " + String(WIFI_SSID));
-  Serial.println("Web interface: http://" + GUI.getIP());
+  if (GUI.connectWiFi(WIFI_SSID, WIFI_PASSWORD)) {
+    Serial.println("Connected to WiFi: " + String(WIFI_SSID));
+    Serial.println("Web interface: http://" + GUI.getIP());
+  } else {
+    Serial.println("WiFi connection failed - starting backup Access Point");
+    GUI.startAP("Blink-Controller", "password123");
+    Serial.println("Connect to WiFi: Blink-Controller");
+    Serial.println("Web interface: http://192.168.4.1");
+  }
   
   // Configure the web interface appearance
   GUI.setTitle(PAGE_TITLE);

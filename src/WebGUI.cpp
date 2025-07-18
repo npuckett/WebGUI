@@ -168,15 +168,28 @@ void WebGUI::startAP(const char* ssid, const char* password) {
 #endif
 }
 
-void WebGUI::connectWiFi(const char* ssid, const char* password) {
+bool WebGUI::connectWiFi(const char* ssid, const char* password) {
     apMode = false;
     WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
+    
+    // Wait up to 30 seconds for connection
+    int attempts = 0;
+    const int maxAttempts = 30;
+    
+    while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
         delay(1000);
         Serial.print(".");
+        attempts++;
     }
-    Serial.println("\nWiFi connected");
-    Serial.println("IP: " + WiFi.localIP().toString());
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi connected");
+        Serial.println("IP: " + WiFi.localIP().toString());
+        return true;
+    } else {
+        Serial.println("\nWiFi connection failed");
+        return false;
+    }
 }
 
 bool WebGUI::configureStaticIP(const char* ip, const char* subnet, const char* gateway) {
@@ -736,26 +749,14 @@ void WebGUI::streamHTML(WiFiClient& client) {
     // Auto-update function for SensorStatus displays
     client.print("function updateSensorDisplays(){");
     client.print("fetch('/get').then(response=>response.json()).then(data=>{");
-    client.print("let debugArea=document.getElementById('debug_area');");
-    client.print("if(!debugArea){debugArea=document.createElement('div');debugArea.id='debug_area';");
-    client.print("debugArea.style.cssText='position:fixed;top:10px;right:10px;background:rgba(0,0,0,0.8);color:white;padding:10px;font-size:12px;max-width:300px;';");
-    client.print("document.body.appendChild(debugArea);}");
-    client.print("debugArea.innerHTML='Last update: '+new Date().toLocaleTimeString()+'<br>Data: '+JSON.stringify(data);");
     client.print("for(let elementId in data){");
     client.print("let displayElement=document.getElementById(elementId+'_display');");
-    client.print("if(displayElement){displayElement.textContent=data[elementId];");
-    client.print("debugArea.innerHTML+='<br>Updated: '+elementId+'_display = '+data[elementId];}");
-    client.print("else{debugArea.innerHTML+='<br>NOT FOUND: '+elementId+'_display';}");
+    client.print("if(displayElement){displayElement.textContent=data[elementId];}");
     client.print("let toggleElement=document.getElementById(elementId);");
     client.print("if(toggleElement&&toggleElement.type==='checkbox'){");
     client.print("let shouldBeChecked=(data[elementId]==='true'||data[elementId]==='1');");
     client.print("if(toggleElement.checked!==shouldBeChecked){toggleElement.checked=shouldBeChecked;}}}");
-    client.print("}).catch(error=>{");
-    client.print("let debugArea=document.getElementById('debug_area');");
-    client.print("if(!debugArea){debugArea=document.createElement('div');debugArea.id='debug_area';");
-    client.print("debugArea.style.cssText='position:fixed;top:10px;right:10px;background:rgba(255,0,0,0.8);color:white;padding:10px;font-size:12px;max-width:300px;';");
-    client.print("document.body.appendChild(debugArea);}");
-    client.print("debugArea.innerHTML='ERROR: '+error.toString();});}");
+    client.print("}).catch(error=>{console.error('Update failed:',error);});}");
     
     // Start auto-updating sensor displays every 500ms
     client.print("setInterval(updateSensorDisplays,500);");
@@ -1345,5 +1346,47 @@ String WebGUI::loadStringSetting(const char* key) {
         EEPROM.get(addr + 1 + i, buffer[i]);
     }
     return String(buffer);
+#endif
+}
+
+// Utility Functions Implementation
+
+// Cross-platform function to get available RAM
+int getFreeRAM() {
+#ifdef ARDUINO_UNOR4_WIFI
+    // For Arduino UNO R4 WiFi (Renesas RA platform)
+    // Simple stack-based approximation
+    char dummy;
+    return (int)&dummy - 0x20000000; // Approximate available stack space
+#else
+    // For AVR-based Arduinos (UNO, Nano, etc.)
+    extern int __heap_start, *__brkval;
+    int v;
+    return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+#endif
+}
+
+// Cross-platform function to clear all stored memory/settings
+void clearMemory() {
+#if defined(ESP32) || defined(ESP8266)
+    // For ESP32/ESP8266 - Clear all Preferences
+    if (preferences) {
+        static_cast<Preferences*>(preferences)->clear();
+        Serial.println("✅ ESP32 Preferences cleared");
+    }
+#else
+    // For Arduino UNO R4 WiFi and other EEPROM-based systems
+    // Clear first 1024 bytes of EEPROM (more than enough for most applications)
+    for (int i = 0; i < 1024; i++) {
+        EEPROM.write(i, 0xFF); // 0xFF is the erased state for EEPROM
+    }
+    #if defined(ARDUINO_UNOR4_WIFI)
+        // Arduino UNO R4 WiFi doesn't require EEPROM.commit()
+        Serial.println("✅ Arduino UNO R4 WiFi EEPROM cleared (1024 bytes)");
+    #else
+        // Other Arduino platforms may need commit
+        EEPROM.commit();
+        Serial.println("✅ Arduino EEPROM cleared (1024 bytes)");
+    #endif
 #endif
 }

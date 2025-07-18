@@ -82,7 +82,15 @@ void setup() {
   // Connect to existing WiFi network
   // This connects to your router instead of creating a new network
   Serial.println("Connecting to WiFi...");
-  GUI.connectWiFi(WIFI_SSID, WIFI_PASSWORD);
+  if (GUI.connectWiFi(WIFI_SSID, WIFI_PASSWORD)) {
+    Serial.println("Connected to WiFi network: " + String(WIFI_SSID));
+    Serial.println("Web interface: http://" + GUI.getIP());
+  } else {
+    Serial.println("WiFi connection failed - starting backup Access Point");
+    GUI.startAP("Basic-Controller", "password123");
+    Serial.println("Connect to WiFi: Basic-Controller");
+    Serial.println("Web interface: http://192.168.4.1");
+  }
   
   // Configure the web interface appearance
   GUI.setTitle(PAGE_TITLE);              // Browser tab title and page heading

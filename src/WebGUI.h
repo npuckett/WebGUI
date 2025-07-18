@@ -57,7 +57,7 @@ class WebGUI {
     
     // Access point configuration
     void startAP(const char* ssid, const char* password = "");
-    void connectWiFi(const char* ssid, const char* password);
+    bool connectWiFi(const char* ssid, const char* password);
     
     // Static IP configuration
     bool configureStaticIP(const char* ip, const char* subnet, const char* gateway);
@@ -348,6 +348,10 @@ class SystemStatus : public GUIElement {
     String formatUptime(unsigned long seconds);
     String formatMemory(int bytes);
 };
+
+// Utility Functions
+int getFreeRAM();   // Cross-platform memory checking function
+void clearMemory(); // Clear all EEPROM/Preferences memory
 
 // Global instance - can be used directly or create your own
 extern WebGUI GUI;

@@ -1,14 +1,14 @@
 /*
-  AP_ServoTest.ino - WebGUI Library 3-Servo Control with Master Toggle
+  AP_ServoTest.ino - WebGUI Library 3-Servo Control with Attach/Detach Toggle
   
  // Web interface configuration
-const char* PAGE_TITLE = "3-Servo Test with Master Toggle";  // Browser tab title and page headingSCRIPTION:
-  This example demonstrates controlling 3 servo motors with a master power toggle
+const char* PAGE_TITLE = "3-Servo Test with Attach/Detach Toggle";  // Browser tab title and page headingSCRIPTION:
+  This example demonstrates controlling 3 servo motors with an Attach/Detach toggle
   in Access Point mode. Features a memory-optimized WebGUI interface with real-time
-  servo position control and master on/off functionality.
+  servo position control and servo attachment control.
   
   FEATURES:
-  - Master servo power toggle (attach/detach all servos)
+  - Servo attach/detach toggle (controls all servos)
   - 3 servo position sliders (Pin 3, Pin 5, Pin 6) with real-time value display
   - Memory-optimized WebGUI implementation (4-element limit respected)
   - Real-time servo position control (0-180 degrees)
@@ -54,22 +54,7 @@ const char* PAGE_TITLE = "3-Servo Test with Master Toggle";  // Browser tab titl
 // Function declarations
 void updateServoStates();
 void printServoStatus();
-int getFreeRAM();
-
-// Function to get available RAM (Cross-platform)
-int getFreeRAM() {
-#ifdef ARDUINO_UNOR4_WIFI
-  // For Arduino UNO R4 WiFi (Renesas RA platform)
-  // Simple stack-based approximation
-  char dummy;
-  return (int)&dummy - 0x20000000; // Approximate available stack space
-#else
-  // For AVR-based Arduinos (UNO, Nano, etc.)
-  extern int __heap_start, *__brkval;
-  int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-#endif
-}
+// getFreeRAM() is now available from WebGUI library
 
 // Pin definitions for servos
 const int SERVO_PIN_3 = 3;
@@ -81,11 +66,11 @@ const char* AP_NAME = "Arduino-ServoControl";     // WiFi network name
 const char* AP_PASSWORD = "servo123";             // WiFi password (minimum 8 characters)
 
 // Web interface configuration
-const char* PAGE_TITLE = "3-Servo Test with Master Toggle";  // Browser tab title and page heading
+const char* PAGE_TITLE = "3-Servo Test with Attach/Detach Toggle";  // Browser tab title and page heading
 
-// GUI Elements: Master toggle + 3 sliders = 4 total (Arduino UNO R4 WiFi limit)
+// GUI Elements: Attach/Detach toggle + 3 sliders = 4 total (Arduino UNO R4 WiFi limit)
 // Toggle constructor: Toggle(label, x, y, width)
-Toggle masterToggle("Master Servo Power", 20, 20, 200);          // Master on/off control
+Toggle ADswitch("Attach/Detach Servos", 20, 20, 200);          // Servo attach/detach control
 
 // Slider constructor: Slider(label, x, y, min, max, default, width)
 Slider servoSlider3("Pin 3 Position", 20, 80, 0, 180, 90);       // Servo 1 position control
@@ -102,8 +87,8 @@ int servo3Position = 90;     // Current position of servo on pin 3
 int servo5Position = 90;     // Current position of servo on pin 5
 int servo6Position = 90;     // Current position of servo on pin 6
 
-// Master servo control state
-bool servosEnabled = true;   // Master toggle state (servos start enabled)
+// Servo attachment control state
+bool servosEnabled = true;   // Attach/detach toggle state (servos start attached)
 
 // Variables to track system state
 unsigned long lastStatusPrint = 0;        // Track when we last printed status
@@ -142,13 +127,13 @@ void setup() {
   GUI.setTitle(PAGE_TITLE);              // Browser tab title and page heading
   
   // Add GUI elements (4 total - respects Arduino UNO R4 WiFi limit)
-  GUI.addElement(&masterToggle);      // Master toggle (element 1)
+  GUI.addElement(&ADswitch);         // Attach/detach toggle (element 1)
   GUI.addElement(&servoSlider3);      // Servo 3 slider (element 2)
   GUI.addElement(&servoSlider5);      // Servo 5 slider (element 3)
   GUI.addElement(&servoSlider6);      // Servo 6 slider (element 4)
   
   // Set initial toggle state to match servo state
-  masterToggle.setState(servosEnabled);
+  ADswitch.setState(servosEnabled);
   
   Serial.println("Added 4 GUI elements: 1 toggle + 3 sliders");
   
@@ -172,7 +157,7 @@ void setup() {
   Serial.println("Web Interface: http://192.168.4.1");
   Serial.println("===============================================");
   Serial.println("Controls Available:");
-  Serial.println("  Master Servo Power Toggle (attach/detach all)");
+  Serial.println("  Servo Attach/Detach Toggle (controls all)");
   Serial.println("  Pin 3 Position Slider (0-180°)");
   Serial.println("  Pin 5 Position Slider (0-180°)");
   Serial.println("  Pin 6 Position Slider (0-180°)");
@@ -221,15 +206,15 @@ void loop() {
 /*
   Function: updateServoStates()
   
-  Monitors the master toggle and position sliders, updating servo states accordingly.
-  - Master toggle controls servo attachment (power saving when off)
-  - Position sliders control servo angles when enabled
+  Monitors the Attach/Detach toggle and position sliders, updating servo states accordingly.
+  - Attach/Detach toggle controls servo attachment (power saving when detached)
+  - Position sliders control servo angles when attached
   - Provides serial feedback for all state changes
 */
 void updateServoStates() {
-  // Check if master toggle state changed
-  if (masterToggle.wasToggled()) {
-    servosEnabled = masterToggle.isOn();
+  // Check if Attach/Detach toggle state changed
+  if (ADswitch.wasToggled()) {
+    servosEnabled = ADswitch.isOn();
     
     if (servosEnabled) {
       // Attach all servos and position them
@@ -246,18 +231,18 @@ void updateServoStates() {
       servo5.write(servo5Position);
       servo6.write(servo6Position);
       
-      Serial.println("MASTER TOGGLE: All servos ENABLED and positioned");
+      Serial.println("ATTACH/DETACH TOGGLE: All servos ATTACHED and positioned");
     } else {
       // Detach all servos (power saving)
       servo3.detach();
       servo5.detach();
       servo6.detach();
       
-      Serial.println("MASTER TOGGLE: All servos DISABLED (detached)");
+      Serial.println("ATTACH/DETACH TOGGLE: All servos DETACHED (power saving)");
     }
   }
   
-  // Update individual servo positions (only when enabled)
+  // Update individual servo positions (only when attached)
   if (servosEnabled) {
     // Pin 3 Servo Position Control
     int newPosition3 = servoSlider3.getIntValue();
@@ -289,15 +274,15 @@ void updateServoStates() {
   Function: printServoStatus()
   
   Prints comprehensive status report to Serial Monitor including:
-  - Master toggle state
+  - Attach/detach toggle state
   - Individual servo positions and attachment states
   - System uptime and memory usage
 */
 void printServoStatus() {
   Serial.println("=== Servo Status Report ===");
   
-  // Master toggle status
-  Serial.println("Master Toggle: " + String(servosEnabled ? "ENABLED" : "DISABLED"));
+  // Attach/detach toggle status
+  Serial.println("Attach/Detach Toggle: " + String(servosEnabled ? "ATTACHED" : "DETACHED"));
   
   // Individual servo status
   String attachState = servosEnabled ? "ATTACHED" : "DETACHED";
