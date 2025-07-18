@@ -83,6 +83,13 @@ const char TOGGLE_TEMPLATE[] PROGMEM = R"rawliteral(
         </div>
 )rawliteral";
 
+const char TEXTBOX_TEMPLATE[] PROGMEM = R"rawliteral(
+        <div class="webgui-textbox-container">
+            <label for="%ID%" class="webgui-textbox-label">%LABEL%</label>
+            <input type="text" id="%ID%" class="webgui-textbox" value="%VALUE%" placeholder="%PLACEHOLDER%" onchange="textboxChange('%ID%', this.value)">
+        </div>
+)rawliteral";
+
 const char SYSTEM_STATUS_TEMPLATE[] PROGMEM = R"rawliteral(
         <div class="webgui-system-container">
             <label class="webgui-system-label">%LABEL%</label>
@@ -170,6 +177,220 @@ void WebGUI::connectWiFi(const char* ssid, const char* password) {
     }
     Serial.println("\nWiFi connected");
     Serial.println("IP: " + WiFi.localIP().toString());
+}
+
+bool WebGUI::configureStaticIP(const char* ip, const char* subnet, const char* gateway) {
+    IPAddress staticIP, subnetMask, gatewayIP;
+    
+    if (!staticIP.fromString(ip) || !subnetMask.fromString(subnet) || !gatewayIP.fromString(gateway)) {
+        Serial.println("Error: Invalid IP configuration format");
+        return false;
+    }
+    
+#if defined(ESP32)
+    if (!WiFi.config(staticIP, gatewayIP, subnetMask)) {
+        Serial.println("Error: Failed to configure static IP");
+        return false;
+    }
+#else
+    // For Arduino boards (UNO R4 WiFi, Nano 33 IoT), WiFi.config() returns void
+    WiFi.config(staticIP, gatewayIP, subnetMask);
+    Serial.println("Static IP configuration applied (Arduino)");
+#endif
+    
+    Serial.println("Static IP configured successfully");
+    Serial.println("IP: " + staticIP.toString());
+    Serial.println("Subnet: " + subnetMask.toString());
+    Serial.println("Gateway: " + gatewayIP.toString());
+    return true;
+}
+
+bool WebGUI::connectWiFiWithStaticIP(const char* ssid, const char* password, const char* ip, const char* subnet, const char* gateway) {
+    apMode = false;
+    
+    // Configure static IP first
+    if (!configureStaticIP(ip, subnet, gateway)) {
+        return false;
+    }
+    
+    // Connect to WiFi
+    WiFi.begin(ssid, password);
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+        delay(1000);
+        Serial.print(".");
+        attempts++;
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi connected with static IP");
+        Serial.println("IP: " + WiFi.localIP().toString());
+        return true;
+    } else {
+        Serial.println("\nFailed to connect to WiFi with static IP");
+        return false;
+    }
+}
+
+String WebGUI::getCurrentIP() {
+    return WiFi.localIP().toString();
+}
+
+String WebGUI::getCurrentSubnet() {
+    return WiFi.subnetMask().toString();
+}
+
+String WebGUI::getCurrentGateway() {
+#if defined(ARDUINO_UNOWIFIR4)
+    // WORKAROUND: Arduino UNO R4 WiFi has a bug where gatewayIP() returns subnet mask
+    // Try to calculate gateway from IP and subnet
+    IPAddress ip = WiFi.localIP();
+    IPAddress subnet = WiFi.subnetMask();
+    
+    // Calculate network address and assume gateway is .1
+    IPAddress network;
+    network[0] = ip[0] & subnet[0];
+    network[1] = ip[1] & subnet[1];
+    network[2] = ip[2] & subnet[2];
+    network[3] = ip[3] & subnet[3];
+    
+    // Gateway is typically network + 1
+    IPAddress gateway = network;
+    gateway[3] = gateway[3] + 1;
+    
+    Serial.println("Gateway calculation workaround:");
+    Serial.println("  IP: " + ip.toString());
+    Serial.println("  Subnet: " + subnet.toString());
+    Serial.println("  Network: " + network.toString());
+    Serial.println("  Calculated Gateway: " + gateway.toString());
+    Serial.println("  WiFi.gatewayIP(): " + WiFi.gatewayIP().toString());
+    
+    return gateway.toString();
+#else
+    return WiFi.gatewayIP().toString();
+#endif
+}
+
+void WebGUI::restartDevice() {
+    Serial.println("🔄 Restarting device...");
+    delay(1000);  // Give serial time to print
+    
+#if defined(ESP32)
+    ESP.restart();
+#elif defined(ARDUINO_UNOWIFIR4)
+    NVIC_SystemReset();  // For Arduino UNO R4 WiFi
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    NVIC_SystemReset();  // For Arduino Nano 33 IoT
+#else
+    // Fallback: infinite loop to halt execution
+    Serial.println("⚠️ Platform-specific restart not available, halting...");
+    while(1) { delay(1000); }
+#endif
+}
+
+bool WebGUI::autoConfigureNetworkRange(const char* ssid, const char* password, int deviceNumber) {
+    Serial.println("🔍 AUTO-DISCOVERY STARTED: Attempting to discover network range...");
+    
+    // Step 1: Connect via DHCP to discover network
+    Serial.println("Step 1: Connecting via DHCP to discover network...");
+    WiFi.begin(ssid, password);
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+        delay(1000);
+        Serial.print(".");
+        attempts++;
+    }
+    
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("\n❌ AUTO-DISCOVERY FAILED: Could not connect via DHCP");
+        return false;
+    }
+    
+    Serial.println("\n✅ DHCP connection successful!");
+    
+    // Step 2: Extract network information
+    IPAddress dhcpIP = WiFi.localIP();
+    IPAddress gateway = WiFi.gatewayIP();
+    IPAddress subnet = WiFi.subnetMask();
+    
+    Serial.println("Step 2: Discovered network configuration:");
+    Serial.println("  DHCP IP: " + dhcpIP.toString());
+    Serial.println("  Gateway (raw): " + gateway.toString());
+    Serial.println("  Subnet: " + subnet.toString());
+    
+#if defined(ARDUINO_UNOWIFIR4)
+    // Apply gateway workaround for UNO R4 WiFi
+    IPAddress network;
+    network[0] = dhcpIP[0] & subnet[0];
+    network[1] = dhcpIP[1] & subnet[1];
+    network[2] = dhcpIP[2] & subnet[2];
+    network[3] = dhcpIP[3] & subnet[3];
+    
+    gateway = network;
+    gateway[3] = gateway[3] + 1;
+    Serial.println("  Gateway (corrected): " + gateway.toString());
+#endif
+    
+    // Step 3: Calculate desired static IP based on network range
+    IPAddress staticIP = calculateStaticIP(gateway, subnet, deviceNumber);
+    
+    Serial.println("Step 3: Calculated Static IP: " + staticIP.toString());
+    
+    // Step 4: Disconnect and reconnect with static IP
+    Serial.println("Step 4: Switching to static IP configuration...");
+    WiFi.disconnect();
+    delay(1000);
+    
+#if defined(ESP32)
+    if (!WiFi.config(staticIP, gateway, subnet)) {
+        Serial.println("Failed to configure static IP");
+        return false;
+    }
+#else
+    // For Arduino boards (UNO R4 WiFi, Nano 33 IoT), WiFi.config() returns void
+    WiFi.config(staticIP, gateway, subnet);
+    Serial.println("Static IP configuration applied (Arduino)");
+#endif
+    
+    WiFi.begin(ssid, password);
+    attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+        delay(1000);
+        Serial.print(".");
+        attempts++;
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\n✅ AUTO-DISCOVERY SUCCESSFUL!");
+        Serial.println("Final configuration:");
+        Serial.println("  IP: " + WiFi.localIP().toString());
+        Serial.println("  Subnet: " + WiFi.subnetMask().toString());
+        Serial.println("  Gateway: " + getCurrentGateway());
+        return true;
+    } else {
+        Serial.println("\n❌ AUTO-DISCOVERY FAILED: Could not reconnect with static IP");
+        return false;
+    }
+}
+
+IPAddress WebGUI::calculateStaticIP(IPAddress gateway, IPAddress subnet, int deviceNumber) {
+    // For /24 networks (255.255.255.0), use same first 3 octets as gateway
+    if (subnet[0] == 255 && subnet[1] == 255 && subnet[2] == 255 && subnet[3] == 0) {
+        return IPAddress(gateway[0], gateway[1], gateway[2], deviceNumber);
+    }
+    
+    // For /16 networks (255.255.0.0), use same first 2 octets
+    if (subnet[0] == 255 && subnet[1] == 255 && subnet[2] == 0 && subnet[3] == 0) {
+        return IPAddress(gateway[0], gateway[1], 0, deviceNumber);
+    }
+    
+    // For /8 networks (255.0.0.0), use same first octet
+    if (subnet[0] == 255 && subnet[1] == 0 && subnet[2] == 0 && subnet[3] == 0) {
+        return IPAddress(gateway[0], 0, 0, deviceNumber);
+    }
+    
+    // Default: assume /24 and use gateway's network
+    return IPAddress(gateway[0], gateway[1], gateway[2], deviceNumber);
 }
 
 void WebGUI::setTitle(const char* title) {
@@ -408,6 +629,10 @@ String WebGUI::generateJS() {
             fetch('/set?' + id + '=' + (checked ? 'true' : 'false'));
         }
         
+        function textboxChange(id, value) {
+            fetch('/set?' + id + '=' + encodeURIComponent(value));
+        }
+        
         // Initialize button states on page load
         function initializeButtonStates() {
             // Set all buttons to inactive state initially
@@ -497,6 +722,9 @@ void WebGUI::streamHTML(WiFiClient& client) {
     client.print("}");
     client.print("function toggleChange(id,checked){");
     client.print("fetch('/set?'+id+'='+(checked?'true':'false')).catch(e=>console.log('Error:',e));");
+    client.print("}");
+    client.print("function textboxChange(id,value){");
+    client.print("fetch('/set?'+id+'='+encodeURIComponent(value)).catch(e=>console.log('Error:',e));");
     client.print("}");
     client.print("function toggleButton(id){");
     client.print("const btn=document.getElementById(id);");
@@ -754,6 +982,159 @@ void Toggle::resetToggle() {
     stateChanged = false;
 }
 
+// TextBox Implementation
+TextBox::TextBox(String label, int x, int y, int width, String placeholder) 
+    : GUIElement(label, x, y, width, 30), textValue(""), placeholderText(placeholder), valueChanged(false), lastValue("") {
+}
+
+String TextBox::generateHTML() {
+    String html = String(TEXTBOX_TEMPLATE);
+    html.replace("%ID%", id);
+    html.replace("%LABEL%", label);
+    html.replace("%VALUE%", textValue);
+    html.replace("%PLACEHOLDER%", placeholderText);
+    return html;
+}
+
+String TextBox::generateCSS() {
+    // Memory optimized: return empty string since we're using minimal CSS
+    return "";
+}
+
+String TextBox::generateJS() {
+    // TextBox change handler - use fetch directly like other controls
+    return "";  // No individual JS needed, handled by global textboxChange function
+}
+
+void TextBox::handleUpdate(String value) {
+    lastValue = textValue;
+    textValue = value;
+    valueChanged = (lastValue != textValue);
+}
+
+String TextBox::getValue() {
+    return textValue;
+}
+
+void TextBox::setValue(String value) {
+    textValue = value;
+    valueChanged = false;
+}
+
+bool TextBox::wasChanged() {
+    bool changed = valueChanged;
+    valueChanged = false; // Reset flag after reading
+    return changed;
+}
+
+// IP Address helper methods
+bool TextBox::isValidIPAddress() {
+    return isValidIPAddress(textValue);
+}
+
+bool TextBox::isValidIPAddress(const String& ip) {
+    if (ip.length() == 0) return false;
+    
+    int dotCount = 0;
+    int lastDot = -1;
+    
+    // Check each character and count dots
+    for (int i = 0; i < ip.length(); i++) {
+        char c = ip.charAt(i);
+        if (c == '.') {
+            dotCount++;
+            if (dotCount > 3) return false; // Too many dots
+            if (i == lastDot + 1) return false; // Consecutive dots
+            if (i == 0 || i == ip.length() - 1) return false; // Dot at start/end
+            lastDot = i;
+        } else if (!isDigit(c)) {
+            return false; // Invalid character
+        }
+    }
+    
+    if (dotCount != 3) return false; // Must have exactly 3 dots
+    
+    // Check each octet
+    int start = 0;
+    for (int dot = 0; dot < 4; dot++) {
+        int end = (dot == 3) ? ip.length() : ip.indexOf('.', start);
+        if (end == -1) return false;
+        
+        String octet = ip.substring(start, end);
+        if (octet.length() == 0 || octet.length() > 3) return false;
+        
+        int value = octet.toInt();
+        if (value < 0 || value > 255) return false;
+        
+        // Check for leading zeros (except for "0" itself)
+        if (octet.length() > 1 && octet.charAt(0) == '0') return false;
+        
+        start = end + 1;
+    }
+    
+    return true;
+}
+
+String TextBox::getIPAddress() {
+    if (isValidIPAddress()) {
+        return textValue;
+    }
+    return ""; // Return empty string if invalid
+}
+
+void TextBox::setIPAddress(const String& ip) {
+    if (isValidIPAddress(ip)) {
+        setValue(ip);
+    } else {
+        Serial.println("Warning: Invalid IP address format: " + ip);
+        // Don't set invalid IP, keep current value
+    }
+}
+
+bool TextBox::isValidSubnetMask(const String& subnet) {
+    if (!isValidIPAddress(subnet)) return false;
+    
+    // Convert to binary and check if it's a valid subnet mask
+    // Valid subnet masks have consecutive 1s followed by consecutive 0s
+    int parts[4];
+    int start = 0;
+    for (int i = 0; i < 4; i++) {
+        int end = (i == 3) ? subnet.length() : subnet.indexOf('.', start);
+        parts[i] = subnet.substring(start, end).toInt();
+        start = end + 1;
+    }
+    
+    // Convert to 32-bit number
+    uint32_t mask = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
+    
+    // Check if it's a valid subnet mask (consecutive 1s followed by consecutive 0s)
+    uint32_t inverted = ~mask;
+    return (inverted & (inverted + 1)) == 0;
+}
+
+bool TextBox::validateNetworkConfig(const String& ip, const String& subnet, const String& gateway) {
+    // Validate each component
+    if (!isValidIPAddress(ip) || !isValidSubnetMask(subnet) || !isValidIPAddress(gateway)) {
+        return false;
+    }
+    
+    // Additional validation: Check if IP and gateway are in the same subnet
+    // This is a simplified check - could be enhanced for production use
+    String ipPrefix = ip.substring(0, ip.lastIndexOf('.'));
+    String gatewayPrefix = gateway.substring(0, gateway.lastIndexOf('.'));
+    
+    // For common /24 networks, check if first 3 octets match
+    if (subnet == "255.255.255.0") {
+        return ipPrefix == gatewayPrefix;
+    }
+    
+    return true; // For other subnet masks, just validate format
+}
+
+String TextBox::formatIPDisplay(const String& ip, const String& subnet, const String& gateway) {
+    return "IP: " + ip + " | Subnet: " + subnet + " | Gateway: " + gateway;
+}
+
 // SensorStatus Implementation
 SensorStatus::SensorStatus(String label, int x, int y, int width) 
     : GUIElement(label, x, y, width, 40), displayValue("0") {
@@ -838,7 +1219,7 @@ void WebGUI::saveSetting(const char* key, int value) {
     for (int i = 0; key[i] != '\0'; i++) {
         hash = hash * 31 + key[i];  // Better hash function
     }
-    uint16_t addr = 16 + (hash % 200) * 8;  // 8-byte spacing to avoid conflicts
+    uint16_t addr = 1616 + (hash % 100) * 16;  // Use different base address from strings
     EEPROM.put(addr, value);
 #endif
 }
@@ -853,7 +1234,7 @@ void WebGUI::saveSetting(const char* key, float value) {
     for (int i = 0; key[i] != '\0'; i++) {
         hash = hash * 31 + key[i];
     }
-    uint16_t addr = 16 + (hash % 200) * 8;
+    uint16_t addr = 3216 + (hash % 100) * 16;  // Use different base address from strings and ints
     EEPROM.put(addr, value);
 #endif
 }
@@ -883,11 +1264,11 @@ void WebGUI::saveSetting(const char* key, const char* value) {
     for (int i = 0; key[i] != '\0'; i++) {
         hash = hash * 31 + key[i];
     }
-    uint16_t addr = 16 + (hash % 200) * 8;
+    uint16_t addr = 16 + (hash % 100) * 16;  // 16-byte slots for longer strings
     // For EEPROM, store string length first, then string data
     uint8_t len = strlen(value);
     EEPROM.put(addr, len);
-    for (uint8_t i = 0; i < len && i < 6; i++) { // Limit string length to fit in 8-byte slot
+    for (uint8_t i = 0; i < len && i < 15; i++) { // Allow up to 15 characters in 16-byte slot
         EEPROM.put(addr + 1 + i, value[i]);
     }
 #endif
@@ -903,7 +1284,7 @@ int WebGUI::loadIntSetting(const char* key) {
     for (int i = 0; key[i] != '\0'; i++) {
         hash = hash * 31 + key[i];
     }
-    uint16_t addr = 16 + (hash % 200) * 8;
+    uint16_t addr = 1616 + (hash % 100) * 16;  // Match saveSetting address
     int value;
     EEPROM.get(addr, value);
     return value;
@@ -920,7 +1301,7 @@ float WebGUI::loadFloatSetting(const char* key) {
     for (int i = 0; key[i] != '\0'; i++) {
         hash = hash * 31 + key[i];
     }
-    uint16_t addr = 16 + (hash % 200) * 8;
+    uint16_t addr = 3216 + (hash % 100) * 16;  // Match saveSetting address
     float value;
     EEPROM.get(addr, value);
     return value;
@@ -954,12 +1335,12 @@ String WebGUI::loadStringSetting(const char* key) {
     for (int i = 0; key[i] != '\0'; i++) {
         hash = hash * 31 + key[i];
     }
-    uint16_t addr = 16 + (hash % 200) * 8;
+    uint16_t addr = 16 + (hash % 100) * 16;  // 16-byte slots for longer strings
     uint8_t len;
     EEPROM.get(addr, len);
-    if (len > 6) return ""; // Safety check for 8-byte slot
+    if (len > 15) return ""; // Safety check for 16-byte slot
     
-    char buffer[7] = {0};
+    char buffer[16] = {0};
     for (uint8_t i = 0; i < len; i++) {
         EEPROM.get(addr + 1 + i, buffer[i]);
     }

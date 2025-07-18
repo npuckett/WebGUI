@@ -17,12 +17,18 @@ const char WEBGUI_DEFAULT_CSS[] PROGMEM = R"rawliteral(
 body { margin: 20px; font-family: Arial, sans-serif; }
 h1 { margin-bottom: 20px; }
 input[type="range"] { width: 300px; margin: 10px; }
+input[type="text"] { width: 300px; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+input[type="text"]:focus { border-color: #007bff; outline: none; box-shadow: 0 0 5px rgba(0,123,255,0.5); }
 button { padding: 10px; margin: 5px; border: 1px solid #ccc; background: #f8f9fa; cursor: pointer; }
 button:hover { background: #e9ecef; }
 .webgui-button-active { background: #007bff; color: white; }
 .webgui-button-inactive { background: #f8f9fa; color: #333; }
 label { display: block; margin: 10px 0 5px 0; font-weight: bold; }
 .webgui-slider-value { color: #007bff; font-weight: normal; }
+.webgui-textbox-container { margin: 15px 0; }
+.webgui-textbox-label { display: block; margin: 10px 0 5px 0; font-weight: bold; }
+.webgui-textbox { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+.webgui-textbox:focus { border-color: #007bff; outline: none; box-shadow: 0 0 5px rgba(0,123,255,0.5); }
 .webgui-sensor-container { margin: 15px 0; }
 .webgui-sensor-label { display: block; margin: 10px 0 5px 0; font-weight: bold; }
 .webgui-sensor-value { color: #007bff; font-weight: bold; font-size: 1.1em; }

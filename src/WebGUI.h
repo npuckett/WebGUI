@@ -43,6 +43,7 @@ class Toggle;
 class Slider;
 class SensorStatus;
 class SystemStatus;
+class TextBox;
 
 class WebGUI {
   public:
@@ -57,6 +58,21 @@ class WebGUI {
     // Access point configuration
     void startAP(const char* ssid, const char* password = "");
     void connectWiFi(const char* ssid, const char* password);
+    
+    // Static IP configuration
+    bool configureStaticIP(const char* ip, const char* subnet, const char* gateway);
+    bool connectWiFiWithStaticIP(const char* ssid, const char* password, const char* ip, const char* subnet, const char* gateway);
+            // Network auto-configuration
+        bool autoConfigureNetworkRange(const char* ssid, const char* password, int deviceNumber = 200);
+        
+        // Helper methods
+        IPAddress calculateStaticIP(IPAddress gateway, IPAddress subnet, int deviceNumber);
+    String getCurrentIP();
+    String getCurrentSubnet();
+    String getCurrentGateway();
+    
+    // Device management
+    void restartDevice();
     
     // Style management
     void setCustomCSS(const char* customCSS);
@@ -263,6 +279,47 @@ class SensorStatus : public GUIElement {
     
   private:
     String displayValue;
+};
+
+class TextBox : public GUIElement {
+  public:
+    TextBox(String label, int x, int y, int width = 200, String placeholder = "");
+    
+    String generateHTML() override;
+    String generateCSS() override;
+    String generateJS() override;
+    void handleUpdate(String value) override;
+    String getValue() override;
+    
+    // Set/get text value
+    void setValue(String value);
+    String getTextValue() { return textValue; }
+    
+    // Check if value was changed
+    bool wasChanged();
+    
+    // Set placeholder text
+    void setPlaceholder(String placeholder) { placeholderText = placeholder; }
+    
+    // IP Address helper methods
+    bool isValidIPAddress();
+    static bool isValidIPAddress(const String& ip);
+    String getIPAddress(); // Returns IP with validation
+    void setIPAddress(const String& ip); // Sets IP with validation
+    
+    // Static IP helper methods for network configuration
+    static bool validateNetworkConfig(const String& ip, const String& subnet, const String& gateway);
+    static String formatIPDisplay(const String& ip, const String& subnet, const String& gateway);
+    static bool isValidSubnetMask(const String& subnet);
+    
+    // Calculate proper height for positioning
+    static int getRequiredHeight() { return 30; }
+    
+  private:
+    String textValue;
+    String placeholderText;
+    bool valueChanged;
+    String lastValue;
 };
 
 class SystemStatus : public GUIElement {
