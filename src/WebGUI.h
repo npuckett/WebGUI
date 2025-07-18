@@ -66,7 +66,21 @@ class WebGUI {
     // Page configuration
     void setTitle(const char* title);
     
+    // Persistent settings management
+    void initSettings();
+    void saveSetting(const char* key, int value);
+    void saveSetting(const char* key, float value);
+    void saveSetting(const char* key, bool value);
+    void saveSetting(const char* key, const char* value);
+    int loadIntSetting(const char* key);
+    float loadFloatSetting(const char* key);
+    bool loadBoolSetting(const char* key);
+    String loadStringSetting(const char* key);
+    
     String getIP();
+    
+    // Element management
+    GUIElement* findElementByID(const String& id);
     
   private:
     WEBGUI_WIFI_TYPE* server;
@@ -78,6 +92,22 @@ class WebGUI {
     bool useCustomStyles;
     String pageTitle;
     String pageHeading;
+    
+    // Settings management
+    bool settingsInitialized;
+    void initSettingsStorage();
+    
+#if defined(ESP32)
+    void* preferences; // Forward declaration to avoid including Preferences.h in header
+#else
+    static const int SETTINGS_START_ADDR = 0;
+    static const uint32_t SETTINGS_MAGIC = 0xDEADBEEF;
+    struct SettingsHeader {
+      uint32_t magic;
+      uint16_t version;
+      uint16_t dataSize;
+    };
+#endif
     
     void setupRoutes();
     void handleRoot();
@@ -109,6 +139,7 @@ class GUIElement {
     
     String getID() { return id; }
     String getLabel() { return label; }
+    void setLabel(String newLabel) { label = newLabel; }
     int getX() { return x; }
     int getY() { return y; }
     int getWidth() { return width; }

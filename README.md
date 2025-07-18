@@ -18,9 +18,16 @@ A simple and powerful web-based GUI library for Arduino that enables you to crea
   - [Toggle Class](#toggle-class)
   - [Slider Class](#slider-class)
   - [SensorStatus Class](#sensorstatus-class)
+  - [TextBox Class](#textbox-class)
+- [Persistent Settings](#persistent-settings)
+- [Device Management](#device-management)
 - [Styling and Themes](#styling-and-themes)
 - [Layout Guidelines](#layout-guidelines)
 - [Network Configuration](#network-configuration)
+- [Advanced Network Features](#advanced-network-features)
+  - [Auto-Discovery](#auto-discovery)
+  - [Static IP Configuration](#static-ip-configuration)
+  - [Network Configuration Interface](#network-configuration-interface)
 - [Usage Instructions](#usage-instructions)
 - [Advanced Examples](#advanced-examples)
 - [Example Projects](#example-projects)
@@ -42,6 +49,11 @@ A simple and powerful web-based GUI library for Arduino that enables you to crea
 - **Real-Time Updates**: Instant feedback between web interface and Arduino
 - **Cross-Platform**: Works on multiple Arduino boards with excellent performance
 - **Enhanced Toggle Controls**: New Toggle class for switch-like interactions
+- **Persistent Settings**: Automatic storage and retrieval of configuration settings across reboots
+- **Static IP Configuration**: Advanced network configuration with web-based IP address management
+- **TextBox Controls**: Input validation and network configuration through text input fields
+- **Device Management**: Built-in restart functionality with cross-platform compatibility
+- **Network Auto-Discovery**: Intelligent network range detection for seamless deployment
 
 ## Compatible Hardware
 
@@ -214,6 +226,82 @@ void setup() {
 void setup() {
   GUI.begin();
   Serial.println("Access at: http://" + GUI.getIP());
+}
+```
+
+#### Persistent Settings Management
+
+The WebGUI library includes a simplified persistent settings API that automatically handles cross-platform storage (EEPROM for Arduino boards, Preferences for ESP32). Values are preserved across power cycles and device resets.
+
+**initSettings()** - Initialize persistent storage system
+```cpp
+void setup() {
+  GUI.initSettings();  // Call once before using save/load methods
+}
+```
+
+**saveSetting(key, value)** - Save values to persistent storage
+```cpp
+// Save different data types
+GUI.saveSetting("motorSpeed", 75);           // int
+GUI.saveSetting("temperature", 23.5);        // float  
+GUI.saveSetting("enabled", true);            // bool
+GUI.saveSetting("deviceName", "Controller"); // string
+
+// Example: Save slider values
+if (saveButton.wasPressed()) {
+  GUI.saveSetting("setting1", slider1.getIntValue());
+  GUI.saveSetting("setting2", slider2.getIntValue());
+}
+```
+
+**loadIntSetting(key)**, **loadFloatSetting(key)**, **loadBoolSetting(key)**, **loadStringSetting(key)** - Load values from persistent storage
+```cpp
+void setup() {
+  GUI.initSettings();
+  
+  // Load saved values (returns 0/""/false if key not found)
+  int motorSpeed = GUI.loadIntSetting("motorSpeed");
+  float temp = GUI.loadFloatSetting("temperature");
+  bool isEnabled = GUI.loadBoolSetting("enabled");
+  String name = GUI.loadStringSetting("deviceName");
+  
+  // Restore slider values
+  slider1.setValue(GUI.loadIntSetting("setting1"));
+  slider2.setValue(GUI.loadIntSetting("setting2"));
+}
+```
+
+**Complete Persistent Settings Example**
+```cpp
+#include <WebGUI.h>
+
+Slider speedSlider("Motor Speed", 20, 50, 0, 100, 50);
+Button saveButton("Save Settings", 20, 120, 120, 40);
+SensorStatus saveStatus("Status", 20, 170, 200);
+
+void setup() {
+  GUI.initSettings();
+  
+  // Load and restore saved value
+  int savedSpeed = GUI.loadIntSetting("motorSpeed");
+  speedSlider.setValue(savedSpeed);
+  
+  GUI.addElement(&speedSlider);
+  GUI.addElement(&saveButton);
+  GUI.addElement(&saveStatus);
+  GUI.begin();
+  
+  saveStatus.setValue("Ready to save");
+}
+
+void loop() {
+  GUI.update();
+  
+  if (saveButton.wasPressed()) {
+    GUI.saveSetting("motorSpeed", speedSlider.getIntValue());
+    saveStatus.setValue("Settings saved!");
+  }
 }
 ```
 
@@ -497,6 +585,256 @@ void loop() {
   // Complex data
   location.setValue("40.7128°N, 74.0060°W");
 }
+```
+
+### TextBox Class
+
+Text input controls for user data entry with validation and specialized IP address support.
+
+#### Constructor
+```cpp
+TextBox(label, x, y, width, defaultValue);
+```
+
+**Example:**
+```cpp
+TextBox deviceName("Device Name", 20, 50, 200, "Arduino-01");
+TextBox ipAddress("IP Address", 20, 100, 300, "192.168.1.100");
+TextBox portNumber("Port", 20, 150, 100, "8080");
+```
+
+#### Methods
+
+**getValue()** - Get current text value
+```cpp
+TextBox serverURL("Server URL", 20, 50, 300, "http://api.example.com");
+
+void loop() {
+  GUI.update();
+  
+  if (connectButton.wasPressed()) {
+    String url = serverURL.getValue();
+    Serial.println("Connecting to: " + url);
+    // Use the URL for your connection logic
+  }
+}
+```
+
+**setValue(String value)** - Set text value programmatically
+```cpp
+TextBox deviceID("Device ID", 20, 50, 200);
+
+void setup() {
+  // Set device ID based on MAC address
+  String macAddress = WiFi.macAddress();
+  deviceID.setValue("ESP32-" + macAddress.substring(12));
+}
+```
+
+**wasChanged()** - Check if value was modified by user
+```cpp
+TextBox configText("Configuration", 20, 50, 300, "default");
+
+void loop() {
+  GUI.update();
+  
+  if (configText.wasChanged()) {
+    String newValue = configText.getValue();
+    Serial.println("Configuration changed to: " + newValue);
+    // Save or validate the new configuration
+  }
+}
+```
+
+#### IP Address Methods
+
+**setIPAddress(String ip)** - Set IP address with validation
+```cpp
+TextBox ipBox("IP Address", 20, 50, 300);
+
+void setup() {
+  ipBox.setIPAddress("192.168.1.100");  // Sets and validates IP format
+}
+```
+
+**getIPAddress()** - Get IP address with format validation
+```cpp
+TextBox ipBox("IP Address", 20, 50, 300, "192.168.1.100");
+
+void loop() {
+  GUI.update();
+  
+  if (applyButton.wasPressed()) {
+    String ip = ipBox.getIPAddress();
+    if (ip.length() > 0) {
+      Serial.println("Valid IP: " + ip);
+      // Apply the IP configuration
+    } else {
+      Serial.println("Invalid IP address format");
+    }
+  }
+}
+```
+
+#### Network Validation
+
+**validateNetworkConfig(ip, subnet, gateway)** - Static method for network validation
+```cpp
+void loop() {
+  GUI.update();
+  
+  if (applyButton.wasPressed()) {
+    String ip = ipBox.getIPAddress();
+    String subnet = subnetBox.getValue();
+    String gateway = gatewayBox.getIPAddress();
+    
+    if (TextBox::validateNetworkConfig(ip, subnet, gateway)) {
+      Serial.println("Valid network configuration");
+      // Apply the network settings
+    } else {
+      Serial.println("Error: IP and Gateway must be in same subnet");
+    }
+  }
+}
+```
+
+**formatIPDisplay(ip, subnet, gateway)** - Static method for display formatting
+```cpp
+SensorStatus networkInfo("Current Network", 20, 200, 400);
+
+void updateNetworkDisplay() {
+  String display = TextBox::formatIPDisplay(
+    "192.168.1.100", 
+    "255.255.255.0", 
+    "192.168.1.1"
+  );
+  networkInfo.setValue(display);
+  // Shows: "IP: 192.168.1.100 | Subnet: 255.255.255.0 | Gateway: 192.168.1.1"
+}
+```
+
+## Persistent Settings
+
+The WebGUI library includes built-in persistent storage for configuration data that survives power cycles and device restarts.
+
+### Initialize Settings System
+```cpp
+void setup() {
+  // Always call this before using settings
+  GUI.initSettings();
+  
+  // Now you can save and load settings
+}
+```
+
+### Save Settings
+```cpp
+// Save different data types
+GUI.saveSetting("device_name", "My Arduino");           // String
+GUI.saveSetting("update_interval", 1000);               // Integer
+GUI.saveSetting("temperature_offset", 2.5);             // Float
+GUI.saveSetting("debug_mode", true);                    // Boolean
+
+// Network configuration
+GUI.saveSetting("custom_ip", "192.168.1.100");
+GUI.saveSetting("custom_subnet", "255.255.255.0");
+GUI.saveSetting("custom_gateway", "192.168.1.1");
+```
+
+### Load Settings
+```cpp
+void setup() {
+  GUI.initSettings();
+  
+  // Load settings with automatic type detection
+  String deviceName = GUI.loadStringSetting("device_name");
+  int interval = GUI.loadIntSetting("update_interval");
+  float offset = GUI.loadFloatSetting("temperature_offset");
+  bool debugMode = GUI.loadBoolSetting("debug_mode");
+  
+  // Use default values if setting doesn't exist
+  if (deviceName.length() == 0) {
+    deviceName = "Default-Arduino";
+  }
+  
+  Serial.println("Device: " + deviceName);
+  Serial.println("Interval: " + String(interval) + "ms");
+}
+```
+
+### Complete Settings Example
+```cpp
+#include <WebGUI.h>
+
+TextBox deviceNameBox("Device Name", 20, 50, 200, "Arduino-01");
+Button saveButton("Save Configuration", 20, 100, 150, 40);
+SensorStatus savedStatus("Last Saved", 20, 150, 300);
+
+void setup() {
+  Serial.begin(115200);
+  GUI.initSettings();
+  
+  // Load saved device name
+  String savedName = GUI.loadStringSetting("device_name");
+  if (savedName.length() > 0) {
+    deviceNameBox.setValue(savedName);
+    savedStatus.setValue("Loaded: " + savedName);
+  }
+  
+  GUI.startAP("ConfigDevice", "password");
+  GUI.addElement(&deviceNameBox);
+  GUI.addElement(&saveButton);
+  GUI.addElement(&savedStatus);
+  GUI.begin();
+}
+
+void loop() {
+  GUI.update();
+  
+  if (saveButton.wasPressed()) {
+    String newName = deviceNameBox.getValue();
+    GUI.saveSetting("device_name", newName.c_str());
+    savedStatus.setValue("Saved: " + newName);
+    Serial.println("Configuration saved: " + newName);
+  }
+}
+```
+
+## Device Management
+
+### Restart Device
+The library provides cross-platform device restart functionality:
+
+```cpp
+#include <WebGUI.h>
+
+Button restartButton("Restart Device", 20, 50, 150, 40);
+
+void setup() {
+  GUI.startAP("MyDevice", "password");
+  GUI.addElement(&restartButton);
+  GUI.begin();
+}
+
+void loop() {
+  GUI.update();
+  
+  if (restartButton.wasPressed()) {
+    Serial.println("Restarting device...");
+    delay(1000);  // Give time for message to be sent
+    
+    // Cross-platform restart
+    GUI.restartDevice();
+    // Device will restart and reconnect
+  }
+}
+```
+
+The `restartDevice()` method automatically detects the platform and uses the appropriate restart mechanism:
+- **ESP32**: `ESP.restart()`
+- **Arduino UNO R4 WiFi**: `NVIC_SystemReset()`  
+- **Arduino Nano 33 IoT**: `NVIC_SystemReset()`
+- **Other platforms**: Safe halt with infinite loop
 
 ## Styling and Themes
 
@@ -689,6 +1027,300 @@ void loop() {
     // Handle reconnection logic
   }
 }
+```
+
+## Advanced Network Features
+
+### Auto-Discovery
+
+The WebGUI library includes intelligent network auto-discovery capabilities that automatically detect and configure network settings. This feature is particularly useful for devices that need to work across different network environments without manual configuration.
+
+#### How Auto-Discovery Works
+
+1. **DHCP Discovery**: Connects via DHCP to discover the current network configuration
+2. **Network Analysis**: Determines the network range, gateway, and subnet mask
+3. **Static IP Assignment**: Calculates and assigns an appropriate static IP address
+4. **Seamless Connection**: Switches to static IP configuration for reliable operation
+
+#### Basic Auto-Discovery Usage
+
+```cpp
+#include <WebGUI.h>
+
+void setup() {
+  Serial.begin(115200);
+  GUI.initSettings();
+  
+  // Auto-discover network and assign device number 200
+  if (GUI.autoConfigureNetworkRange("YourWiFi", "password", 200)) {
+    Serial.println("Auto-discovery successful!");
+    Serial.println("Device IP: " + GUI.getCurrentIP());
+    Serial.println("Gateway: " + GUI.getCurrentGateway());
+    Serial.println("Subnet: " + GUI.getCurrentSubnet());
+  } else {
+    Serial.println("Auto-discovery failed");
+  }
+  
+  GUI.begin();
+}
+```
+
+#### Smart Connection Sequence
+
+For maximum reliability, combine saved settings with auto-discovery fallback:
+
+```cpp
+void setup() {
+  GUI.initSettings();
+  
+  // Load saved network configuration
+  String saved_ip = GUI.loadStringSetting("custom_ip");
+  String saved_subnet = GUI.loadStringSetting("custom_subnet");  
+  String saved_gateway = GUI.loadStringSetting("custom_gateway");
+  
+  bool connected = false;
+  
+  // Step 1: Try saved static IP configuration
+  if (saved_ip.length() > 0) {
+    Serial.println("Trying saved static IP...");
+    connected = GUI.connectWiFiWithStaticIP("WiFi", "pass", 
+                                           saved_ip.c_str(),
+                                           saved_subnet.c_str(), 
+                                           saved_gateway.c_str());
+  }
+  
+  // Step 2: Fallback to auto-discovery
+  if (!connected) {
+    Serial.println("Attempting auto-discovery...");
+    connected = GUI.autoConfigureNetworkRange("WiFi", "pass", 200);
+  }
+  
+  // Step 3: Last resort - hardcoded defaults
+  if (!connected) {
+    Serial.println("Using hardcoded defaults...");
+    connected = GUI.connectWiFiWithStaticIP("WiFi", "pass",
+                                           "192.168.1.200",
+                                           "255.255.255.0",
+                                           "192.168.1.1");
+  }
+  
+  GUI.begin();
+}
+```
+
+#### Auto-Discovery Benefits
+
+- **Cross-Network Compatibility**: Works on different network ranges (192.168.1.x, 10.0.0.x, etc.)
+- **Zero Configuration**: No manual IP setup required
+- **Intelligent Fallback**: Gracefully handles network changes
+- **Static IP Reliability**: Provides consistent IP addresses for device access
+- **Enterprise Ready**: Handles complex network topologies
+
+#### Supported Network Types
+
+- **Home Networks**: 192.168.1.x, 192.168.0.x ranges
+- **Corporate Networks**: 10.0.0.x, 172.16.x.x ranges  
+- **Hotspot Networks**: 192.168.137.x (Windows), 172.20.x.x (iOS)
+- **Custom Subnets**: Any /24 or /16 network configuration
+
+### Static IP Configuration
+
+For environments requiring specific IP addresses, use the static IP configuration methods:
+
+```cpp
+// Manual static IP configuration
+bool connected = GUI.connectWiFiWithStaticIP(
+  "YourWiFi",           // WiFi SSID
+  "yourpassword",       // WiFi Password  
+  "192.168.1.100",      // Static IP Address
+  "255.255.255.0",      // Subnet Mask
+  "192.168.1.1"         // Gateway IP
+);
+
+if (connected) {
+  Serial.println("Connected with static IP: 192.168.1.100");
+} else {
+  Serial.println("Static IP connection failed");
+}
+```
+
+#### IP Configuration Helpers
+
+```cpp
+// Get current network information
+String currentIP = GUI.getCurrentIP();
+String currentSubnet = GUI.getCurrentSubnet();
+String currentGateway = GUI.getCurrentGateway();
+
+// Save network configuration to persistent storage
+GUI.saveSetting("device_ip", "192.168.1.100");
+GUI.saveSetting("device_subnet", "255.255.255.0");
+GUI.saveSetting("device_gateway", "192.168.1.1");
+
+// Load saved configuration
+String saved_ip = GUI.loadStringSetting("device_ip");
+```
+
+#### Network Validation
+
+The library includes built-in validation for network configurations:
+
+```cpp
+// The library automatically validates:
+// - IP address format (xxx.xxx.xxx.xxx)
+// - Subnet mask validity
+// - Gateway reachability
+// - Network address consistency
+```
+
+### Network Configuration Interface
+
+The WebGUI library includes a complete web-based network configuration interface that allows users to set static IP addresses through a user-friendly web form. This is demonstrated in the `Station_SetIPAddress` example.
+
+#### Features
+
+- **Web-Based IP Configuration**: Set IP address, subnet mask, and gateway through text input fields
+- **Persistent Storage**: Network settings are automatically saved and restored across restarts
+- **Input Validation**: Real-time validation ensures valid network configurations
+- **Apply/Reset/Restart**: Complete workflow for network configuration changes
+- **Visual Feedback**: Status displays show current and saved network configurations
+
+#### Basic Network Configuration Interface
+
+```cpp
+#include <WebGUI.h>
+
+// Network configuration elements
+TextBox ipAddressBox("IP Address", 20, 50, 300, "192.168.1.100");
+TextBox subnetMaskBox("Subnet Mask", 20, 100, 300, "255.255.255.0");
+TextBox gatewayBox("Gateway", 20, 150, 300, "192.168.1.1");
+
+// Control buttons
+Button applyButton("Apply Settings", 20, 200, 120, 40);
+Button resetButton("Reset to Default", 150, 200, 140, 40);
+Button restartButton("Restart Device", 300, 200, 120, 40);
+
+// Status displays
+SensorStatus networkStatus("Network Status", 20, 250, 400);
+SensorStatus currentIPStatus("Current Network", 20, 300, 400);
+
+void setup() {
+  Serial.begin(115200);
+  GUI.initSettings();
+  
+  // Load saved network configuration or use defaults
+  String current_ip = GUI.loadStringSetting("custom_ip");
+  String current_subnet = GUI.loadStringSetting("custom_subnet");
+  String current_gateway = GUI.loadStringSetting("custom_gateway");
+  
+  if (current_ip.length() == 0) {
+    current_ip = "192.168.1.100";      // Default IP
+    current_subnet = "255.255.255.0";  // Default subnet
+    current_gateway = "192.168.1.1";   // Default gateway
+  }
+  
+  // Set TextBox values to current configuration
+  ipAddressBox.setIPAddress(current_ip);
+  subnetMaskBox.setValue(current_subnet);
+  gatewayBox.setIPAddress(current_gateway);
+  
+  // Connect with current configuration
+  bool connected = GUI.connectWiFiWithStaticIP(
+    "YourWiFi", "password",
+    current_ip.c_str(),
+    current_subnet.c_str(),
+    current_gateway.c_str()
+  );
+  
+  if (connected) {
+    networkStatus.setValue("Connected - Static IP Configuration");
+  } else {
+    networkStatus.setValue("Connection Failed - Check settings");
+  }
+  
+  // Display current network information
+  String networkInfo = TextBox::formatIPDisplay(current_ip, current_subnet, current_gateway);
+  currentIPStatus.setValue(networkInfo);
+  
+  GUI.setTitle("Network Configuration");
+  GUI.addElement(&ipAddressBox);
+  GUI.addElement(&subnetMaskBox);
+  GUI.addElement(&gatewayBox);
+  GUI.addElement(&applyButton);
+  GUI.addElement(&resetButton);
+  GUI.addElement(&restartButton);
+  GUI.addElement(&networkStatus);
+  GUI.addElement(&currentIPStatus);
+  GUI.begin();
+}
+
+void loop() {
+  GUI.update();
+  
+  // Apply new network configuration
+  if (applyButton.wasPressed()) {
+    String new_ip = ipAddressBox.getIPAddress();
+    String new_subnet = subnetMaskBox.getValue();
+    String new_gateway = gatewayBox.getIPAddress();
+    
+    // Validate configuration
+    if (TextBox::validateNetworkConfig(new_ip, new_subnet, new_gateway)) {
+      // Save to persistent storage
+      GUI.saveSetting("custom_ip", new_ip.c_str());
+      GUI.saveSetting("custom_subnet", new_subnet.c_str());
+      GUI.saveSetting("custom_gateway", new_gateway.c_str());
+      
+      networkStatus.setValue("Settings saved! Restart to apply new configuration.");
+      
+      // Update display
+      String newInfo = "SAVED: " + TextBox::formatIPDisplay(new_ip, new_subnet, new_gateway);
+      currentIPStatus.setValue(newInfo);
+    } else {
+      networkStatus.setValue("Error: Invalid network configuration");
+    }
+  }
+  
+  // Reset to defaults
+  if (resetButton.wasPressed()) {
+    GUI.saveSetting("custom_ip", "");
+    GUI.saveSetting("custom_subnet", "");
+    GUI.saveSetting("custom_gateway", "");
+    
+    ipAddressBox.setIPAddress("192.168.1.100");
+    subnetMaskBox.setValue("255.255.255.0");
+    gatewayBox.setIPAddress("192.168.1.1");
+    
+    networkStatus.setValue("Default settings restored! Restart to apply.");
+  }
+  
+  // Restart device
+  if (restartButton.wasPressed()) {
+    networkStatus.setValue("Restarting device...");
+    delay(2000);
+    GUI.restartDevice();
+  }
+}
+```
+
+#### Complete Example: Station_SetIPAddress
+
+The library includes a complete example (`Station_SetIPAddress.ino`) that demonstrates:
+
+- Loading saved network configuration on startup
+- Web-based form for IP address configuration  
+- Real-time input validation and error handling
+- Persistent storage of network settings
+- Device restart functionality
+- Visual status feedback
+
+**Location**: `examples/StationMode/Station_SetIPAddress/Station_SetIPAddress.ino`
+
+**Features**:
+- Remembers network settings across power cycles
+- Validates IP addresses and network consistency
+- Provides clear status messages and error handling
+- Supports cross-platform device restart
+- Clean, professional web interface
 
 ## Usage Instructions
 
@@ -1125,6 +1757,14 @@ The library includes comprehensive examples for both Access Point and Station Mo
 - **Hardware**: Servo motor on pin 9, external power recommended
 - **Network**: Portable servo control without WiFi dependency
 
+#### AP_SaveSettings.ino
+**Description**: Persistent settings management with automatic value restoration on startup.
+- **Features**: Two sliders with persistent storage, save button, visual feedback, automatic restoration
+- **Best for**: Configuration interfaces, persistent parameter storage, settings panels
+- **Hardware**: No external components needed
+- **Network**: Creates "Settings-Controller" network, standalone operation
+- **Special**: Values survive power cycles and are restored automatically
+
 ### Station Mode Examples
 
 #### Station_Basic.ino
@@ -1158,6 +1798,22 @@ The library includes comprehensive examples for both Access Point and Station Mo
 #### Station_SensorDebug.ino
 **Description**: Network-integrated sensor monitoring for permanent installations.
 - **Features**: Continuous sensor monitoring, network status, remote debugging
+- **Best for**: Permanent sensor installations, remote monitoring
+- **Hardware**: Potentiometer on A0, optional sensors
+- **Network**: Home WiFi integration, remote access from anywhere on network
+
+#### Station_SetIPAddress.ino
+**Description**: Web-based network configuration interface with persistent settings.
+- **Features**: IP address configuration via web form, persistent storage, input validation, device restart
+- **Best for**: Network configuration, professional installations, dynamic IP management
+- **Hardware**: No external components needed
+- **Network**: Configurable static IP with web-based management interface
+- **Special**: 
+  - Complete network configuration through web interface
+  - Settings persist across power cycles and restarts
+  - Real-time input validation and error handling
+  - Apply/Reset/Restart workflow for configuration changes
+  - Professional-grade network management interface
 - **Best for**: Long-term monitoring, data collection, remote diagnostics
 - **Hardware**: Potentiometer on A0, temperature sensor (optional)
 - **Network**: Home network integration for remote monitoring
@@ -1168,6 +1824,14 @@ The library includes comprehensive examples for both Access Point and Station Mo
 - **Best for**: Home automation, remote mechanical control, security systems
 - **Hardware**: Servo motor on pin 9, external power supply recommended
 - **Network**: Home WiFi for remote servo control
+
+#### Station_SaveSettings.ino
+**Description**: Persistent settings management integrated with home network.
+- **Features**: Two sliders with persistent storage, save button, visual feedback, automatic restoration, network integration
+- **Best for**: Permanent device configuration, network-accessible settings panels, home automation parameters
+- **Hardware**: No external components needed
+- **Network**: Connects to your home WiFi, accessible from any network device
+- **Special**: Values survive power cycles and are restored automatically, supports remote configuration
 
 ### Advanced Test Example
 

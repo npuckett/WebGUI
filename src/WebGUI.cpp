@@ -6,6 +6,13 @@
 
 #include "WebGUI.h"
 
+// Platform-specific includes for settings
+#if defined(ARDUINO_UNOWIFIR4) || defined(ARDUINO_SAMD_NANO_33_IOT)
+  #include <EEPROM.h>
+#elif defined(ESP32)
+  #include <Preferences.h>
+#endif
+
 // Static member initialization
 int GUIElement::nextID = 0;
 
@@ -27,8 +34,20 @@ const char HTML_TEMPLATE[] PROGMEM = R"rawliteral(
 <body>
     <div class="container">
         <h1>%HEADING%</h1>
-        %ELEMENTS%
-    </div>
+        void WebGUI::saveSetting(const char* key, bool value) {
+    if (!settingsInitialized) initSettings();
+    
+#if defined(ESP32)
+    static_cast<Preferences*>(preferences)->putBool(key, value);
+#else
+    uint16_t hash = 0;
+    for (int i = 0; key[i] != '\0'; i++) {
+        hash = hash * 31 + key[i];
+    }
+    uint16_t addr = 16 + (hash % 200) * 8;
+    EEPROM.put(addr, value);
+#endif
+}  </div>
     <script>
         %JAVASCRIPT%
     </script>
@@ -73,9 +92,11 @@ const char SYSTEM_STATUS_TEMPLATE[] PROGMEM = R"rawliteral(
 
 // WebGUI Implementation
 WebGUI::WebGUI(int port) : serverPort(port), apMode(false), useCustomStyles(false), 
-                           pageTitle("Arduino WebGUI"), pageHeading("Control Panel") {
+                           pageTitle("Arduino WebGUI"), pageHeading("Control Panel"),
+                           settingsInitialized(false) {
 #if defined(ESP32)
     server = new WebServer(port);
+    preferences = nullptr;
 #else
     server = new WiFiServer(port);
 #endif
@@ -109,6 +130,15 @@ void WebGUI::update() {
 
 void WebGUI::addElement(GUIElement* element) {
     elements.push_back(element);
+}
+
+GUIElement* WebGUI::findElementByID(const String& id) {
+    for (GUIElement* element : elements) {
+        if (element->getID() == id) {
+            return element;
+        }
+    }
+    return nullptr;
 }
 
 void WebGUI::startAP(const char* ssid, const char* password) {
@@ -280,6 +310,20 @@ String WebGUI::generateGetResponse() {
 
 void WebGUI::handleRoot() {
 #if defined(ESP32)
+    // Reset save status elements when page is refreshed
+    // Look for elements with "Save Status" in the label
+    for (GUIElement* element : elements) {
+        Serial.println("Checking element: " + element->getLabel() + " = " + element->getValue());
+        if (element->getLabel().indexOf("Save Status") >= 0) {
+            String currentValue = element->getValue();
+            Serial.println("Found Save Status element with value: " + currentValue);
+            if (currentValue.indexOf("saved") >= 0 || currentValue.indexOf("Saving") >= 0) {
+                Serial.println("Resetting save status to 'Ready to save settings'");
+                element->handleUpdate("Ready to save settings");
+            }
+        }
+    }
+    
     String html = generateHTML();
     server->send(200, "text/html", html);
 #endif
@@ -409,6 +453,20 @@ String WebGUI::generateJS() {
 
 // MEMORY OPTIMIZED: Stream HTML directly instead of building large strings in memory
 void WebGUI::streamHTML(WiFiClient& client) {
+    // Reset save status elements when page is refreshed
+    // Look for elements with "Save Status" in the label
+    for (GUIElement* element : elements) {
+        Serial.println("Checking element: " + element->getLabel() + " = " + element->getValue());
+        if (element->getLabel().indexOf("Save Status") >= 0) {
+            String currentValue = element->getValue();
+            Serial.println("Found Save Status element with value: " + currentValue);
+            if (currentValue.indexOf("saved") >= 0 || currentValue.indexOf("Saving") >= 0) {
+                Serial.println("Resetting save status to 'Ready to save settings'");
+                element->handleUpdate("Ready to save settings");
+            }
+        }
+    }
+    
     // Send HTML template start - broken into small chunks
     client.print("<!DOCTYPE html><html><head><meta charset=\"UTF-8\">");
     client.print("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
@@ -720,8 +778,8 @@ String SensorStatus::generateJS() {
 }
 
 void SensorStatus::handleUpdate(String value) {
-    // SensorStatus is read-only, this method is not used
-    // Values are updated via setValue() methods from Arduino code
+    // Allow updating the display value (useful for reset operations)
+    displayValue = value;
 }
 
 String SensorStatus::getValue() {
@@ -746,4 +804,165 @@ void SensorStatus::setValue(String value) {
 
 void SensorStatus::setValue(const char* value) {
     displayValue = String(value);
+}
+
+// ============================================================================
+// Persistent Settings Implementation
+// ============================================================================
+
+void WebGUI::initSettings() {
+    if (settingsInitialized) return;
+    
+#if defined(ESP32)
+    // Initialize ESP32 Preferences
+    if (preferences == nullptr) {
+        preferences = new Preferences();
+        static_cast<Preferences*>(preferences)->begin("webgui", false);
+    }
+#else
+    // Initialize EEPROM for Arduino boards
+    EEPROM.begin();
+#endif
+    
+    settingsInitialized = true;
+}
+
+void WebGUI::saveSetting(const char* key, int value) {
+    if (!settingsInitialized) initSettings();
+    
+#if defined(ESP32)
+    static_cast<Preferences*>(preferences)->putInt(key, value);
+#else
+    // Calculate hash-based address with proper spacing for int (4 bytes)
+    uint16_t hash = 0;
+    for (int i = 0; key[i] != '\0'; i++) {
+        hash = hash * 31 + key[i];  // Better hash function
+    }
+    uint16_t addr = 16 + (hash % 200) * 8;  // 8-byte spacing to avoid conflicts
+    EEPROM.put(addr, value);
+#endif
+}
+
+void WebGUI::saveSetting(const char* key, float value) {
+    if (!settingsInitialized) initSettings();
+    
+#if defined(ESP32)
+    static_cast<Preferences*>(preferences)->putFloat(key, value);
+#else
+    uint16_t hash = 0;
+    for (int i = 0; key[i] != '\0'; i++) {
+        hash = hash * 31 + key[i];
+    }
+    uint16_t addr = 16 + (hash % 200) * 8;
+    EEPROM.put(addr, value);
+#endif
+}
+
+void WebGUI::saveSetting(const char* key, bool value) {
+    if (!settingsInitialized) initSettings();
+    
+#if defined(ESP32)
+    static_cast<Preferences*>(preferences)->putBool(key, value);
+#else
+    uint16_t addr = 16;
+    for (int i = 0; key[i] != '\0'; i++) {
+        addr += key[i];
+    }
+    addr = (addr % 1000) + 16;
+    EEPROM.put(addr, value);
+#endif
+}
+
+void WebGUI::saveSetting(const char* key, const char* value) {
+    if (!settingsInitialized) initSettings();
+    
+#if defined(ESP32)
+    static_cast<Preferences*>(preferences)->putString(key, value);
+#else
+    uint16_t hash = 0;
+    for (int i = 0; key[i] != '\0'; i++) {
+        hash = hash * 31 + key[i];
+    }
+    uint16_t addr = 16 + (hash % 200) * 8;
+    // For EEPROM, store string length first, then string data
+    uint8_t len = strlen(value);
+    EEPROM.put(addr, len);
+    for (uint8_t i = 0; i < len && i < 6; i++) { // Limit string length to fit in 8-byte slot
+        EEPROM.put(addr + 1 + i, value[i]);
+    }
+#endif
+}
+
+int WebGUI::loadIntSetting(const char* key) {
+    if (!settingsInitialized) initSettings();
+    
+#if defined(ESP32)
+    return static_cast<Preferences*>(preferences)->getInt(key, 0);
+#else
+    uint16_t hash = 0;
+    for (int i = 0; key[i] != '\0'; i++) {
+        hash = hash * 31 + key[i];
+    }
+    uint16_t addr = 16 + (hash % 200) * 8;
+    int value;
+    EEPROM.get(addr, value);
+    return value;
+#endif
+}
+
+float WebGUI::loadFloatSetting(const char* key) {
+    if (!settingsInitialized) initSettings();
+    
+#if defined(ESP32)
+    return static_cast<Preferences*>(preferences)->getFloat(key, 0.0);
+#else
+    uint16_t hash = 0;
+    for (int i = 0; key[i] != '\0'; i++) {
+        hash = hash * 31 + key[i];
+    }
+    uint16_t addr = 16 + (hash % 200) * 8;
+    float value;
+    EEPROM.get(addr, value);
+    return value;
+#endif
+}
+
+bool WebGUI::loadBoolSetting(const char* key) {
+    if (!settingsInitialized) initSettings();
+    
+#if defined(ESP32)
+    return static_cast<Preferences*>(preferences)->getBool(key, false);
+#else
+    uint16_t hash = 0;
+    for (int i = 0; key[i] != '\0'; i++) {
+        hash = hash * 31 + key[i];
+    }
+    uint16_t addr = 16 + (hash % 200) * 8;
+    bool value;
+    EEPROM.get(addr, value);
+    return value;
+#endif
+}
+
+String WebGUI::loadStringSetting(const char* key) {
+    if (!settingsInitialized) initSettings();
+    
+#if defined(ESP32)
+    return static_cast<Preferences*>(preferences)->getString(key, "");
+#else
+    uint16_t hash = 0;
+    for (int i = 0; key[i] != '\0'; i++) {
+        hash = hash * 31 + key[i];
+    }
+    uint16_t addr = 16 + (hash % 200) * 8;
+    uint8_t len;
+    EEPROM.get(addr, len);
+    if (len > 6) return ""; // Safety check for 8-byte slot
+    
+    char buffer[7] = {0};
+    for (uint8_t i = 0; i < len; i++) {
+        EEPROM.get(addr + 1 + i, buffer[i]);
+    }
+    return String(buffer);
+#endif
 }
