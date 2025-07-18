@@ -824,7 +824,7 @@ The simplest possible WebGUI example - just toggle the built-in LED on and off. 
 **Modes:** Available in Station Mode and AP Mode
 
 **API Components Used:**
-- [Toggle Class](#toggle-class) - Switch-like on/off control
+- [Toggle Class](#toggle-class) - Switch like on/off control
 
 ![ToggleAnLED Example](images/ToggleAnLED.jpg)
 
