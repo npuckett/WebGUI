@@ -805,7 +805,6 @@ The `getFreeRAM()` function automatically detects the platform:
 ### Examples
 
 #### Basic
-![Basic Example](images/Basic.jpg)
 
 Introduction to WebGUI with button and slider controls - perfect for learning the fundamentals.
 
@@ -816,8 +815,9 @@ Introduction to WebGUI with button and slider controls - perfect for learning th
 - [Slider Class](#slider-class) - Continuous value control
 - [SensorStatus Class](#sensorstatus-class) - Read-only status displays
 
+![Basic Example](images/Basic.jpg)
+
 #### ToggleAnLED
-![ToggleAnLED Example](images/ToggleAnLED.jpg)
 
 The simplest possible WebGUI example - just toggle the built-in LED on and off. Great for beginners.
 
@@ -826,8 +826,9 @@ The simplest possible WebGUI example - just toggle the built-in LED on and off. 
 **API Components Used:**
 - [Toggle Class](#toggle-class) - Switch-like on/off control
 
+![ToggleAnLED Example](images/ToggleAnLED.jpg)
+
 #### SwitchPanel
-![SwitchPanel Example](images/SwitchPanel.jpg)
 
 Multiple LED control using toggle switches for creating control panels and multi-device interfaces.
 
@@ -836,8 +837,9 @@ Multiple LED control using toggle switches for creating control panels and multi
 **API Components Used:**
 - [Toggle Class](#toggle-class) - Multiple switch controls
 
+![SwitchPanel Example](images/SwitchPanel.jpg)
+
 #### SensorDebug
-![SensorDebug Example](images/SensorDebug.jpg)
 
 Real-time sensor monitoring with web-based debug interface - ideal for development and troubleshooting.
 
@@ -847,8 +849,9 @@ Real-time sensor monitoring with web-based debug interface - ideal for developme
 - [SensorStatus Class](#sensorstatus-class) - Read-only sensor displays
 - [Memory Monitoring Functions](#memory-monitoring--utility-functions) - getFreeRAM() for diagnostics
 
+![SensorDebug Example](images/SensorDebug.jpg)
+
 #### SaveSettings
-![SaveSettings Example](images/SaveSettings.jpg)
 
 Persistent settings management with automatic value restoration on startup - essential for configuration interfaces.
 
@@ -860,8 +863,9 @@ Persistent settings management with automatic value restoration on startup - ess
 - [SensorStatus Class](#sensorstatus-class) - Status feedback
 - [Persistent Settings Management](#persistent-settings-management) - Save/load configuration data
 
+![SaveSettings Example](images/SaveSettings.jpg)
+
 #### SetIPAddress
-![SetIPAddress Example](images/SetIPAddress.jpg)
 
 Web-based network configuration interface with persistent settings and input validation - professional network management.
 
@@ -872,6 +876,8 @@ Web-based network configuration interface with persistent settings and input val
 - [Button Class](#button-class) - Apply/Reset/Restart actions
 - [SensorStatus Class](#sensorstatus-class) - Network status displays
 - [Persistent Settings Management](#persistent-settings-management) - Network configuration storage
+
+![SetIPAddress Example](images/SetIPAddress.jpg)
 
 ## Network Configuration
 
