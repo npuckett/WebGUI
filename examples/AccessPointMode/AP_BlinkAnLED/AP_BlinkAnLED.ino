@@ -34,9 +34,6 @@
 
 #include <WebGUI.h>
 
-// Function declarations
-void updateBlinkBehavior();
-
 // Pin definitions
 const int BLINK_LED_PIN = LED_BUILTIN;         // LED for blinking control
 

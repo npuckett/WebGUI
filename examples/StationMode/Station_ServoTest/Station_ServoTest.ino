@@ -56,9 +56,6 @@ const char* PAGE_TITLE = "3-Servo Test with Master Toggle";  // Browser tab titl
 #include <WebGUI.h>
 #include <Servo.h>
 
-// Function declarations
-void updateServoStates();
-void printServoStatus();
 // getFreeRAM() is now available from WebGUI library
 
 // Pin definitions for servos

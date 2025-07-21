@@ -38,11 +38,6 @@
 
 #include <WebGUI.h>
 
-// Function declarations
-void buttonGo();
-void updateRandomSensor();
-void printSystemStatus();
-
 // Pin definitions - change these if using different pins
 int TOGGLE_LED_PIN = LED_BUILTIN;    // Built-in LED for toggle button
 int PWM_LED_PIN = 3;                 // External LED for brightness control (PWM capable pin)
@@ -110,52 +105,6 @@ void setup() {
   Serial.println("Connect your device to the WiFi network above,");
   Serial.println("then open the web address in your browser.");
   Serial.println("===============================================");
-}
-
-/*
-  Function: updateRandomSensor()
-  
-  This function simulates reading data from a sensor and updates the web display.
-  In a real project, you would replace the random number generation with
-  actual sensor readings (temperature, humidity, distance, etc.).
-*/
-void updateRandomSensor() {
-  // Check if enough time has passed since the last update
-  if (millis() - lastSensorUpdate >= UPDATE_RATE) {
-    
-    // Generate a random sensor value (simulating real sensor data)
-    // In a real project, this would be something like:
-    // int sensorValue = analogRead(A0);
-    // float temperature = readTemperatureSensor();
-    int randomValue = random(0, 1024);  // Random number between 0-1023
-    
-    // Update the sensor status display on the web page
-    // The setValue() function accepts different data types:
-    randomSensor.setValue(String(randomValue) );  
-    // You could also use: randomSensor.setValue(randomValue);  // Just the number
-    
-    // Print to Serial Monitor for debugging
-    Serial.println("Sensor updated: " + String(randomValue));
-    
-    // Remember when we last updated
-    lastSensorUpdate = millis();
-  }
-}
-
-/*
-  Function: printSystemStatus()
-  
-  This function prints the current system status to the Serial Monitor.
-  Useful for debugging and monitoring your system.
-*/
-void printSystemStatus() {
-  Serial.println("--- System Status ---");
-  Serial.println("Toggle LED (Built-in): " + String(ledToggle.isOn() ? "ON" : "OFF"));
-  Serial.println("PWM LED Brightness (Pin 3): " + String(currentBrightness) + "/255");
-  Serial.println("Button Press Count: " + String(buttonPressCount));
-  Serial.println("Update Rate: " + String(UPDATE_RATE) + " ms (fixed)");
-  Serial.println("Uptime: " + String(millis() / 1000) + " seconds");
-  Serial.println("--------------------");
 }
 
 void loop() {
@@ -236,6 +185,52 @@ void buttonGo() {
   // takePhotoWithCamera();
   // resetCounters();
   // toggleRelay(RELAY_PIN);
+}
+
+/*
+  Function: updateRandomSensor()
+  
+  This function simulates reading data from a sensor and updates the web display.
+  In a real project, you would replace the random number generation with
+  actual sensor readings (temperature, humidity, distance, etc.).
+*/
+void updateRandomSensor() {
+  // Check if enough time has passed since the last update
+  if (millis() - lastSensorUpdate >= UPDATE_RATE) {
+    
+    // Generate a random sensor value (simulating real sensor data)
+    // In a real project, this would be something like:
+    // int sensorValue = analogRead(A0);
+    // float temperature = readTemperatureSensor();
+    int randomValue = random(0, 1024);  // Random number between 0-1023
+    
+    // Update the sensor status display on the web page
+    // The setValue() function accepts different data types:
+    randomSensor.setValue(String(randomValue) );  
+    // You could also use: randomSensor.setValue(randomValue);  // Just the number
+    
+    // Print to Serial Monitor for debugging
+    Serial.println("Sensor updated: " + String(randomValue));
+    
+    // Remember when we last updated
+    lastSensorUpdate = millis();
+  }
+}
+
+/*
+  Function: printSystemStatus()
+  
+  This function prints the current system status to the Serial Monitor.
+  Useful for debugging and monitoring your system.
+*/
+void printSystemStatus() {
+  Serial.println("--- System Status ---");
+  Serial.println("Toggle LED (Built-in): " + String(ledToggle.isOn() ? "ON" : "OFF"));
+  Serial.println("PWM LED Brightness (Pin 3): " + String(currentBrightness) + "/255");
+  Serial.println("Button Press Count: " + String(buttonPressCount));
+  Serial.println("Update Rate: " + String(UPDATE_RATE) + " ms (fixed)");
+  Serial.println("Uptime: " + String(millis() / 1000) + " seconds");
+  Serial.println("--------------------");
 }
 
 

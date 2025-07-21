@@ -48,11 +48,6 @@
 
 #include <WebGUI.h>
 
-// Function declarations
-void updateSensorReading();
-void checkThreshold();
-void printDebugInfo();
-
 // Pin definitions
 const int SENSOR_PIN = A0;               // Analog sensor input pin
 
@@ -130,6 +125,27 @@ void setup() {
   Serial.println("===============================================");
 }
 
+void loop() {
+  // CRITICAL: Always call GUI.update() in your main loop
+  // This processes web requests and updates control values
+  GUI.update();
+  
+  // Read the sensor value at the specified rate
+  updateSensorReading();
+  
+  // Check the sensor value against the threshold
+  checkThreshold();
+  
+  // Print debug information every 2 seconds
+  if (millis() - lastDebugPrint >= 2000) {
+    printDebugInfo();
+    lastDebugPrint = millis();
+  }
+  
+  // Small delay to prevent overwhelming the system
+  delay(10);
+}
+
 /*
   Function: updateSensorReading()
   
@@ -190,25 +206,4 @@ void printDebugInfo() {
   Serial.println("Percentage: " + String((currentSensorValue * 100) / 1023) + "%");
   Serial.println("Uptime: " + String(millis() / 1000) + " seconds");
   Serial.println("------------------------");
-}
-
-void loop() {
-  // CRITICAL: Always call GUI.update() in your main loop
-  // This processes web requests and updates control values
-  GUI.update();
-  
-  // Read the sensor value at the specified rate
-  updateSensorReading();
-  
-  // Check the sensor value against the threshold
-  checkThreshold();
-  
-  // Print debug information every 2 seconds
-  if (millis() - lastDebugPrint >= 2000) {
-    printDebugInfo();
-    lastDebugPrint = millis();
-  }
-  
-  // Small delay to prevent overwhelming the system
-  delay(10);
 }

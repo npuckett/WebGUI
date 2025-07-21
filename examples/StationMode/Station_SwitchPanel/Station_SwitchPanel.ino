@@ -42,10 +42,6 @@
 
 #include <WebGUI.h>
 
-// Function declarations
-void updateLEDStates();
-void printLEDStatus();
-
 // Pin definitions for LEDs - pins 2 through 5
 const int LED_PIN_2 = 2;
 const int LED_PIN_3 = 3;

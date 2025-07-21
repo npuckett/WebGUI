@@ -51,9 +51,6 @@ const char* PAGE_TITLE = "3-Servo Test with Attach/Detach Toggle";  // Browser t
 #include <WebGUI.h>
 #include <Servo.h>
 
-// Function declarations
-void updateServoStates();
-void printServoStatus();
 // getFreeRAM() is now available from WebGUI library
 
 // Pin definitions for servos
