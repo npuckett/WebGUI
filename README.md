@@ -4,7 +4,7 @@
 [![ESP32](https://img.shields.io/badge/ESP32-Compatible-green.svg)](https://www.espressif.com/en/products/socs/esp32)
 [![License: LGPL v2.1](https://img.shields.io/badge/License-LGPL%20v2.1-blue.svg)](https://www.gnu.org/licenses/lgpl-2.1)
 
-A simple and powerful web-based GUI library for Arduino that enables you to create beautiful control interfaces accessible through any web browser. Perfect for IoT projects, home automation, and remote device control.
+WebGUI provides a simplified method for creating webpages that can interact with your arduino code in real-time. The focus is on leveraging the GUI components built into modern browsers to create GUIs for projects. The library covers standard input components Buttons, Toggles, Sliders, and Textboxes and also has the ability to display the current value of any variable. This functionality has been possible for some time, but implementation was often slow. This library allows both for GUIs for quick calibration/debugging as well as persistent interfaces for adjusting and storing data. Previous examples I had seen also implemented the webpage as a generated text string, whereas this library works with more optimized HTML streaming.
 
 ## Table of Contents
 
@@ -43,9 +43,9 @@ A simple and powerful web-based GUI library for Arduino that enables you to crea
 
 ## Compatible Hardware
 
-- **Arduino UNO R4 WiFi** *Fully tested and optimized*
-- **Arduino Nano 33 IoT** *Fully tested and optimized*
-- **ESP32** (all variants) *Excellent performance*
+- **Arduino UNO R4 WiFi** 
+- **Arduino Nano 33 IoT** 
+- **ESP32** (all variants) 
 
 ### Memory Requirements
 - **Minimum RAM**: 8KB recommended (library uses optimized streaming)
@@ -68,12 +68,18 @@ A simple and powerful web-based GUI library for Arduino that enables you to crea
 
 ## Quick Start
 
+This example creates a simple toggle switch interface to control the built-in LED on your board. It is works by turning your Arduino into a Wifi Hotspot that is also hosting a single webpage that can interact with the variables running in real time. 
+
+**What it does:** Creates a WiFi network called "My-Arduino" with a web interface at 192.168.4.1 that lets you toggle the built-in LED on and off.
+
+**How to use:**
+1. **Upload the code** to your Arduino (UNO R4 WiFi, Nano 33 IoT, or ESP32)
+2. **Connect to WiFi** - Look for "My-Arduino" network and connect with password "password123"
+3. **Open web browser** - Navigate to http://192.168.4.1
+4. **Toggle the LED** - Click the "Built-in LED" switch to turn the LED on/off
+
 ```cpp
 #include <WebGUI.h>
-
-// *** WIFI CREDENTIALS - UPDATE THESE ***
-const char* WIFI_SSID = "YourWiFiName";       // Replace with your WiFi network name
-const char* WIFI_PASSWORD = "YourWiFiPassword"; // Replace with your WiFi password
 
 // Create a simple LED toggle control
 Toggle ledToggle("Built-in LED", 20, 50, 120);
@@ -85,18 +91,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
   
-  // Try to connect to existing WiFi network
-  Serial.println("Attempting to connect to WiFi...");
-  if (GUI.connectWiFi(WIFI_SSID, WIFI_PASSWORD)) {
-    Serial.println("Connected to WiFi network: " + String(WIFI_SSID));
-    Serial.println("Web interface: http://" + GUI.getIP());
-  } else {
-    // Fallback to Access Point mode if WiFi connection fails
-    Serial.println("WiFi connection failed - starting backup Access Point");
-    GUI.startAP("LED-Controller", "password123");
-    Serial.println("Connect to WiFi: LED-Controller");
-    Serial.println("Web interface: http://192.168.4.1");
-  }
+  // Start WiFi Access Point
+  GUI.startAP("My-Arduino", "password123");
   
   // Configure interface
   GUI.setTitle("LED Controller");
@@ -107,7 +103,8 @@ void setup() {
   // Start web server
   GUI.begin();
   
-  Serial.println("LED Controller ready!");
+  Serial.println("Connect to WiFi: My-Arduino");
+  Serial.println("Web interface: http://" + GUI.getIP());
 }
 
 void loop() {
@@ -121,6 +118,12 @@ void loop() {
   }
 }
 ```
+
+## AP vs Station Mode
+
+**Access Point (AP) Mode** creates a standalone WiFi network that other devices can connect to. Think of your Arduino as becoming its own WiFi router. This is perfect for portable projects, demonstrations, or situations where you don't have existing WiFi. Your phone or computer connects directly to the Arduino's network (like "My-Arduino") and you access the web interface at a fixed address like 192.168.4.1.
+
+**Station Mode** connects your Arduino to an existing WiFi network (like your home WiFi). Your Arduino becomes another device on your network, just like your phone or laptop. This is ideal for permanent installations and home automation because you can access your Arduino from anywhere on your network, and it gets an IP address from your router.
 
 ## API Reference
 
@@ -795,12 +798,6 @@ The `getFreeRAM()` function automatically detects the platform:
 - **Other platforms**: Standard heap monitoring
 
 ## Example Projects
-
-### AP vs Station Mode
-
-**Access Point (AP) Mode** creates a standalone WiFi network that other devices can connect to. Think of your Arduino as becoming its own WiFi router. This is perfect for portable projects, demonstrations, or situations where you don't have existing WiFi. Your phone or computer connects directly to the Arduino's network (like "My-Arduino") and you access the web interface at a fixed address like 192.168.4.1.
-
-**Station Mode** connects your Arduino to an existing WiFi network (like your home WiFi). Your Arduino becomes another device on your network, just like your phone or laptop. This is ideal for permanent installations and home automation because you can access your Arduino from anywhere on your network, and it gets an IP address from your router.
 
 ### Examples
 
