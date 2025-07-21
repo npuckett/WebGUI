@@ -6,7 +6,7 @@
 
 ![Main Image](images/SensorDebug.jpg)
 
-WebGUI provides a simplified method for creating webpages that can interact with your arduino code in real-time. The focus is on leveraging the GUI components built into modern browsers to create GUIs for projects. The library covers standard input components Buttons, Toggles, Sliders, and Textboxes and also has the ability to display the current value of any variable. This functionality has been possible for some time, but implementation was often slow. This library allows both for GUIs for quick calibration/debugging as well as persistent interfaces for adjusting and storing data. Previous examples I had seen also implemented the webpage as a generated text string, whereas this library works with more optimized HTML streaming.
+WebGUI provides a simplified method for creating webpages that can interact with your arduino code in real-time. The focus is on leveraging the GUI components built into modern browsers to create GUIs for projects. The library covers standard input components Buttons, Toggles, Sliders, and Textboxes and also has the ability to display the current value of any variable. This functionality has been possible for some time, but implementation was often slow. This library allows both for GUIs for quick calibration/debugging as well as persistent interfaces for adjusting and storing data. Previous examples implemented the webpage as a generated text string, whereas this library works with more optimized HTML streaming.
 
 ## Table of Contents
 
