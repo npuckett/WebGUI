@@ -68,15 +68,40 @@ WebGUI provides a simplified method for creating webpages that can interact with
 
 ## Quick Start
 
-This example creates a simple toggle switch interface to control the built-in LED on your board. It is works by turning your Arduino into a Wifi Hotspot that is also hosting a single webpage that can interact with the variables running in real time. 
-
-**What it does:** Creates a WiFi network called "My-Arduino" with a web interface at 192.168.4.1 that lets you toggle the built-in LED on and off.
-
 **How to use:**
 1. **Upload the code** to your Arduino (UNO R4 WiFi, Nano 33 IoT, or ESP32)
 2. **Connect to WiFi** - Look for "My-Arduino" network and connect with password "password123"
 3. **Open web browser** - Navigate to http://192.168.4.1
 4. **Toggle the LED** - Click the "Built-in LED" switch to turn the LED on/off
+
+**How the code works:**
+
+**Define Variables** *(before setup() function)*
+1. **Create GUI components** - Define the interactive elements you want ([Button](#button-class), [Toggle](#toggle-class), [Slider](#slider-class), [SensorStatus](#sensorstatus-class), [TextBox](#textbox-class)). Each component needs properties like label, position (x, y), and dimensions (width, height).
+
+**In setup()**
+
+2. **Start network connection** - Use the top-level `GUI` object to connect in either:
+   - **Access Point Mode**: `GUI.startAP("network-name", "password")` - Creates its own WiFi network
+   - **Station Mode**: `GUI.connectWiFi("wifi-name", "password")` - Connects to existing WiFi
+
+3. **Set interface title** - `GUI.setTitle("Your Title")` - Sets the browser tab title and page heading
+
+4. **Add elements to GUI** - Use `GUI.addElement(&elementName)` with the `&` symbol to pass each component to the interface
+
+5. **Start the web server** - Call `GUI.begin()` to start serving the web interface
+
+**In loop()**
+
+6. **Update the system** - Always call `GUI.update()` to process web requests and update component values
+
+7. **Read/set values** - Use each component's built-in methods like `wasPressed()`, `isOn()`, `getValue()`, `setValue()` to interact with the interface
+
+Toggle an LED
+
+This example creates a simple toggle switch interface to control the built-in LED on your board. It works by turning your Arduino into a WiFi Hotspot that is also hosting a single webpage that can interact with the variables running in real time.
+
+**What it does:** Creates a WiFi network called "My-Arduino" with a web interface at 192.168.4.1 that lets you toggle the built-in LED on and off.
 
 ```cpp
 #include <WebGUI.h>
