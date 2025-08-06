@@ -622,6 +622,10 @@ String WebGUI::generateJS() {
         // Button state tracking
         var buttonStates = {};
         
+        function updateValue(id, val) {
+            fetch('/set?' + id + '=' + val).catch(e => console.log('Error:', e));
+        }
+        
         function buttonClick(id) {
             fetch('/set?' + id + '=1');
         }

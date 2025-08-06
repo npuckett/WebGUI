@@ -33,8 +33,8 @@
 const int BLINK_LED_PIN = LED_BUILTIN;         // LED for blinking control
 
 // Network configuration - UPDATE THESE WITH YOUR WIFI CREDENTIALS
-const char* WIFI_SSID = "YourWiFiName";        // Your WiFi network name
-const char* WIFI_PASSWORD = "YourWiFiPassword"; // Your WiFi password
+const char* WIFI_SSID = "Downstairs";        // Your WiFi network name
+const char* WIFI_PASSWORD = "bunnythecat"; // Your WiFi password
 
 // Web interface configuration
 const char* PAGE_TITLE = "LED Blink Controller";

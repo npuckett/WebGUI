@@ -8,7 +8,5 @@
 			"path": "../../PlatformIO/Projects/WebGUI-Dev"
 		}
 	],
-	"settings": {
-		"powershell.cwd": "WebGUI"
-	}
+	"settings": {}
 }
