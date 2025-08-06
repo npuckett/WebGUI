@@ -34,20 +34,8 @@ const char HTML_TEMPLATE[] PROGMEM = R"rawliteral(
 <body>
     <div class="container">
         <h1>%HEADING%</h1>
-        void WebGUI::saveSetting(const char* key, bool value) {
-    if (!settingsInitialized) initSettings();
-    
-#if defined(ESP32)
-    static_cast<Preferences*>(preferences)->putBool(key, value);
-#else
-    uint16_t hash = 0;
-    for (int i = 0; key[i] != '\0'; i++) {
-        hash = hash * 31 + key[i];
-    }
-    uint16_t addr = 16 + (hash % 200) * 8;
-    EEPROM.put(addr, value);
-#endif
-}  </div>
+        %ELEMENTS%
+    </div>
     <script>
         %JAVASCRIPT%
     </script>
@@ -1349,25 +1337,7 @@ String WebGUI::loadStringSetting(const char* key) {
 #endif
 }
 
-// Utility Functions Implementation
-
-// Cross-platform function to get available RAM
-int getFreeRAM() {
-#ifdef ARDUINO_UNOR4_WIFI
-    // For Arduino UNO R4 WiFi (Renesas RA platform)
-    // Simple stack-based approximation
-    char dummy;
-    return (int)&dummy - 0x20000000; // Approximate available stack space
-#else
-    // For AVR-based Arduinos (UNO, Nano, etc.)
-    extern int __heap_start, *__brkval;
-    int v;
-    return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-#endif
-}
-
-// Cross-platform function to clear all stored memory/settings
-void clearMemory() {
+void WebGUI::clearMemory() {
 #if defined(ESP32) || defined(ESP8266)
     // For ESP32/ESP8266 - Clear all Preferences
     if (preferences) {
@@ -1389,4 +1359,26 @@ void clearMemory() {
         Serial.println("✅ Arduino EEPROM cleared (1024 bytes)");
     #endif
 #endif
+}
+
+// Utility Functions Implementation
+
+// Cross-platform function to get available RAM
+int getFreeRAM() {
+#ifdef ARDUINO_UNOR4_WIFI
+    // For Arduino UNO R4 WiFi (Renesas RA platform)
+    // Simple stack-based approximation
+    char dummy;
+    return (int)&dummy - 0x20000000; // Approximate available stack space
+#else
+    // For AVR-based Arduinos (UNO, Nano, etc.)
+    extern int __heap_start, *__brkval;
+    int v;
+    return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+#endif
+}
+
+// Cross-platform function to clear all stored memory/settings
+void clearMemory() {
+    GUI.clearMemory();
 }

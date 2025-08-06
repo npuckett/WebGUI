@@ -43,20 +43,22 @@ label { display: block; margin: 10px 0 5px 0; font-weight: bold; }
 
 // Theme structures (kept for compatibility but not used)
 struct WebGUITheme {
-    String primaryColor = "#007bff";
-    String secondaryColor = "#6c757d";
-    String backgroundColor = "#ffffff";
-    String textColor = "#333333";
-    String fontFamily = "Arial, sans-serif";
+    const char* primaryColor;
+    const char* secondaryColor;
+    const char* backgroundColor;
+    const char* textColor;
+    const char* fontFamily;
+    
+    WebGUITheme(const char* primary = "#007bff", 
+                const char* secondary = "#6c757d", 
+                const char* background = "#ffffff", 
+                const char* text = "#333333", 
+                const char* font = "Arial, sans-serif") 
+        : primaryColor(primary), secondaryColor(secondary), 
+          backgroundColor(background), textColor(text), fontFamily(font) {}
 };
 
-const WebGUITheme WEBGUI_DEFAULT_THEME = {
-    "#007bff",     // Primary color
-    "#6c757d",     // Secondary color  
-    "#ffffff",     // Background color
-    "#333333",     // Text color
-    "Arial, sans-serif"  // Font family
-};
+const WebGUITheme WEBGUI_DEFAULT_THEME;
 
 // Simplified style manager class
 class WebGUIStyleManager {

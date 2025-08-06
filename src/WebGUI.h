@@ -92,6 +92,7 @@ class WebGUI {
     float loadFloatSetting(const char* key);
     bool loadBoolSetting(const char* key);
     String loadStringSetting(const char* key);
+    void clearMemory(); // Clear all stored settings
     
     String getIP();
     
