@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "WebGUI-Dev",
+			"path": "../../PlatformIO/Projects/WebGUI-Dev"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "WebGUI"
+	}
+}
