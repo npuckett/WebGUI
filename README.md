@@ -75,6 +75,16 @@ WebGUI provides a simplified method for creating webpages that can interact with
 3. Search for "WebGUI"
 4. Click **Install**
 
+### Additional Dependencies
+
+#### For Arduino Nano 33 IoT Users
+The Nano 33 IoT requires the **FlashStorage** library for persistent settings:
+1. Go to **Sketch** → **Include Library** → **Manage Libraries**
+2. Search for "FlashStorage"
+3. Install **FlashStorage** by cmaglie
+
+> **Note:** The FlashStorage library is only required if you're using the `saveSetting()` and `loadSetting()` functions on the Nano 33 IoT. Basic WebGUI functionality works without it.
+
 ### Manual Installation
 1. Download the latest release from [GitHub](https://github.com/npuckett/WebGUI)
 2. Extract the ZIP file

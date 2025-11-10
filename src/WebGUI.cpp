@@ -7,8 +7,24 @@
 #include "WebGUI.h"
 
 // Platform-specific includes for settings
-#if defined(ARDUINO_UNOWIFIR4) || defined(ARDUINO_SAMD_NANO_33_IOT)
+#if defined(ARDUINO_UNOWIFIR4)
   #include <EEPROM.h>
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+  #include <FlashStorage.h>
+  
+  // FlashStorage structures for Nano 33 IoT
+  // We'll create a simple key-value storage system
+  typedef struct {
+    bool valid;
+    int intValues[10];
+    float floatValues[10];
+    bool boolValues[10];
+    char stringValues[10][16]; // 10 strings, max 15 chars each
+    char keys[40][16]; // 40 keys total (10 per type), max 15 chars each
+  } FlashSettings;
+  
+  FlashStorage(flash_settings, FlashSettings);
+  
 #elif defined(ESP32)
   #include <Preferences.h>
 #endif
@@ -1193,6 +1209,9 @@ void WebGUI::initSettings() {
         preferences = new Preferences();
         static_cast<Preferences*>(preferences)->begin("webgui", false);
     }
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    // FlashStorage doesn't need initialization
+    // Data structures are managed through FlashStorage library
 #else
     // Initialize EEPROM for Arduino boards
     EEPROM.begin();
@@ -1206,6 +1225,31 @@ void WebGUI::saveSetting(const char* key, int value) {
     
 #if defined(ESP32)
     static_cast<Preferences*>(preferences)->putInt(key, value);
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    FlashSettings settings = flash_settings.read();
+    if (!settings.valid) {
+        memset(&settings, 0, sizeof(settings));
+        settings.valid = true;
+    }
+    
+    // Find existing key or empty slot
+    int slot = -1;
+    for (int i = 0; i < 10; i++) {
+        if (strcmp(settings.keys[i], key) == 0) {
+            slot = i;
+            break;
+        }
+        if (settings.keys[i][0] == '\0' && slot == -1) {
+            slot = i;
+        }
+    }
+    
+    if (slot != -1) {
+        strncpy(settings.keys[slot], key, 15);
+        settings.keys[slot][15] = '\0';
+        settings.intValues[slot] = value;
+        flash_settings.write(settings);
+    }
 #else
     // Calculate hash-based address with proper spacing for int (4 bytes)
     uint16_t hash = 0;
@@ -1222,6 +1266,30 @@ void WebGUI::saveSetting(const char* key, float value) {
     
 #if defined(ESP32)
     static_cast<Preferences*>(preferences)->putFloat(key, value);
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    FlashSettings settings = flash_settings.read();
+    if (!settings.valid) {
+        memset(&settings, 0, sizeof(settings));
+        settings.valid = true;
+    }
+    
+    int slot = -1;
+    for (int i = 0; i < 10; i++) {
+        if (strcmp(settings.keys[10 + i], key) == 0) {
+            slot = i;
+            break;
+        }
+        if (settings.keys[10 + i][0] == '\0' && slot == -1) {
+            slot = i;
+        }
+    }
+    
+    if (slot != -1) {
+        strncpy(settings.keys[10 + slot], key, 15);
+        settings.keys[10 + slot][15] = '\0';
+        settings.floatValues[slot] = value;
+        flash_settings.write(settings);
+    }
 #else
     uint16_t hash = 0;
     for (int i = 0; key[i] != '\0'; i++) {
@@ -1237,6 +1305,30 @@ void WebGUI::saveSetting(const char* key, bool value) {
     
 #if defined(ESP32)
     static_cast<Preferences*>(preferences)->putBool(key, value);
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    FlashSettings settings = flash_settings.read();
+    if (!settings.valid) {
+        memset(&settings, 0, sizeof(settings));
+        settings.valid = true;
+    }
+    
+    int slot = -1;
+    for (int i = 0; i < 10; i++) {
+        if (strcmp(settings.keys[20 + i], key) == 0) {
+            slot = i;
+            break;
+        }
+        if (settings.keys[20 + i][0] == '\0' && slot == -1) {
+            slot = i;
+        }
+    }
+    
+    if (slot != -1) {
+        strncpy(settings.keys[20 + slot], key, 15);
+        settings.keys[20 + slot][15] = '\0';
+        settings.boolValues[slot] = value;
+        flash_settings.write(settings);
+    }
 #else
     uint16_t addr = 16;
     for (int i = 0; key[i] != '\0'; i++) {
@@ -1252,6 +1344,31 @@ void WebGUI::saveSetting(const char* key, const char* value) {
     
 #if defined(ESP32)
     static_cast<Preferences*>(preferences)->putString(key, value);
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    FlashSettings settings = flash_settings.read();
+    if (!settings.valid) {
+        memset(&settings, 0, sizeof(settings));
+        settings.valid = true;
+    }
+    
+    int slot = -1;
+    for (int i = 0; i < 10; i++) {
+        if (strcmp(settings.keys[30 + i], key) == 0) {
+            slot = i;
+            break;
+        }
+        if (settings.keys[30 + i][0] == '\0' && slot == -1) {
+            slot = i;
+        }
+    }
+    
+    if (slot != -1) {
+        strncpy(settings.keys[30 + slot], key, 15);
+        settings.keys[30 + slot][15] = '\0';
+        strncpy(settings.stringValues[slot], value, 15);
+        settings.stringValues[slot][15] = '\0';
+        flash_settings.write(settings);
+    }
 #else
     uint16_t hash = 0;
     for (int i = 0; key[i] != '\0'; i++) {
@@ -1272,6 +1389,16 @@ int WebGUI::loadIntSetting(const char* key) {
     
 #if defined(ESP32)
     return static_cast<Preferences*>(preferences)->getInt(key, 0);
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    FlashSettings settings = flash_settings.read();
+    if (!settings.valid) return 0;
+    
+    for (int i = 0; i < 10; i++) {
+        if (strcmp(settings.keys[i], key) == 0) {
+            return settings.intValues[i];
+        }
+    }
+    return 0;
 #else
     uint16_t hash = 0;
     for (int i = 0; key[i] != '\0'; i++) {
@@ -1289,6 +1416,16 @@ float WebGUI::loadFloatSetting(const char* key) {
     
 #if defined(ESP32)
     return static_cast<Preferences*>(preferences)->getFloat(key, 0.0);
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    FlashSettings settings = flash_settings.read();
+    if (!settings.valid) return 0.0;
+    
+    for (int i = 0; i < 10; i++) {
+        if (strcmp(settings.keys[10 + i], key) == 0) {
+            return settings.floatValues[i];
+        }
+    }
+    return 0.0;
 #else
     uint16_t hash = 0;
     for (int i = 0; key[i] != '\0'; i++) {
@@ -1306,6 +1443,16 @@ bool WebGUI::loadBoolSetting(const char* key) {
     
 #if defined(ESP32)
     return static_cast<Preferences*>(preferences)->getBool(key, false);
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    FlashSettings settings = flash_settings.read();
+    if (!settings.valid) return false;
+    
+    for (int i = 0; i < 10; i++) {
+        if (strcmp(settings.keys[20 + i], key) == 0) {
+            return settings.boolValues[i];
+        }
+    }
+    return false;
 #else
     uint16_t hash = 0;
     for (int i = 0; key[i] != '\0'; i++) {
@@ -1323,6 +1470,16 @@ String WebGUI::loadStringSetting(const char* key) {
     
 #if defined(ESP32)
     return static_cast<Preferences*>(preferences)->getString(key, "");
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    FlashSettings settings = flash_settings.read();
+    if (!settings.valid) return "";
+    
+    for (int i = 0; i < 10; i++) {
+        if (strcmp(settings.keys[30 + i], key) == 0) {
+            return String(settings.stringValues[i]);
+        }
+    }
+    return "";
 #else
     uint16_t hash = 0;
     for (int i = 0; key[i] != '\0'; i++) {
@@ -1348,6 +1505,12 @@ void WebGUI::clearMemory() {
         static_cast<Preferences*>(preferences)->clear();
         Serial.println("✅ ESP32 Preferences cleared");
     }
+#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+    // For Nano 33 IoT - Clear FlashStorage
+    FlashSettings settings;
+    memset(&settings, 0, sizeof(settings));
+    flash_settings.write(settings);
+    Serial.println("✅ Nano 33 IoT Flash Storage cleared");
 #else
     // For Arduino UNO R4 WiFi and other EEPROM-based systems
     // Clear first 1024 bytes of EEPROM (more than enough for most applications)
