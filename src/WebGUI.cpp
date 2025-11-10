@@ -688,6 +688,31 @@ String WebGUI::generateJS() {
                 fetch('/set?' + id + '=' + value);
             }, debounceMs);
         }
+        
+        // Auto-update function for SensorStatus displays
+        function updateSensorDisplays() {
+            fetch('/get').then(response => response.json()).then(data => {
+                for (let elementId in data) {
+                    let displayElement = document.getElementById(elementId + '_display');
+                    if (displayElement) {
+                        displayElement.textContent = data[elementId];
+                    }
+                    let toggleElement = document.getElementById(elementId);
+                    if (toggleElement && toggleElement.type === 'checkbox') {
+                        let shouldBeChecked = (data[elementId] === 'true' || data[elementId] === '1');
+                        if (toggleElement.checked !== shouldBeChecked) {
+                            toggleElement.checked = shouldBeChecked;
+                        }
+                    }
+                }
+            }).catch(error => {
+                console.error('Update failed:', error);
+            });
+        }
+        
+        // Start auto-updating sensor displays every 500ms
+        setInterval(updateSensorDisplays, 500);
+        updateSensorDisplays();
     )rawliteral";
     
     for (GUIElement* element : elements) {
