@@ -710,8 +710,8 @@ String WebGUI::generateJS() {
             });
         }
         
-        // Start auto-updating sensor displays every 500ms
-        setInterval(updateSensorDisplays, 500);
+        // Start auto-updating sensor displays every 100ms
+        setInterval(updateSensorDisplays, 100);
         updateSensorDisplays();
     )rawliteral";
     
@@ -791,8 +791,8 @@ void WebGUI::streamHTML(WiFiClient& client) {
     client.print("if(toggleElement.checked!==shouldBeChecked){toggleElement.checked=shouldBeChecked;}}}");
     client.print("}).catch(error=>{console.error('Update failed:',error);});}");
     
-    // Start auto-updating sensor displays every 500ms
-    client.print("setInterval(updateSensorDisplays,500);");
+    // Start auto-updating sensor displays every 100ms
+    client.print("setInterval(updateSensorDisplays,100);");
     client.print("updateSensorDisplays();");
     
     // Stream each element's JavaScript for event handlers
